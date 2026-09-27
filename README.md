@@ -1,7 +1,7 @@
 # Delivery Routing com Grafos - Stock.io
 
-Número da Lista: 1<br>
-Conteúdo da Disciplina: Grafos<br>
+Número da Lista: 2<br>
+Conteúdo da Disciplina: Greed<br>
 
 ## Alunos
 
