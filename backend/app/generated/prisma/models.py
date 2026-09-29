@@ -440,7 +440,6 @@ class Order(bases.BaseOrder):
     userId: Optional[_str] = None
     cep: _str
     totalPrice: _float
-    status: _str
     createdAt: datetime.datetime
     items: Optional[List['models.OrderItem']] = None
 
@@ -919,14 +918,6 @@ _Order_fields: Dict['types.OrderKeys', PartialModelField] = OrderedDict(
             'is_list': False,
             'optional': False,
             'type': '_float',
-            'is_relational': False,
-            'documentation': None,
-        }),
-        ('status', {
-            'name': 'status',
-            'is_list': False,
-            'optional': False,
-            'type': '_str',
             'is_relational': False,
             'documentation': None,
         }),

@@ -31,14 +31,18 @@ async def connect_db():
         return
 
     try:
+        import asyncio
         if not db.is_connected():
-            await db.connect()
+            await asyncio.wait_for(db.connect(), timeout=3.0)
             logger.info("✅ [Prisma] Conectado ao banco de dados Supabase PostgreSQL com sucesso!")
     except Exception as e:
-        logger.error(f"❌ [Prisma] Erro ao conectar ao banco de dados: {e}")
+        logger.warning(f"⚠️ [Prisma] Banco de dados remoto indisponível ({e}). Executando servidor em modo de demonstração resiliente.")
 
 async def disconnect_db():
     """Desconecta do banco de dados ao encerrar o servidor."""
-    if db.is_connected():
-        await db.disconnect()
-        logger.info("🔌 [Prisma] Desconectado do banco de dados.")
+    try:
+        if db.is_connected():
+            await db.disconnect()
+            logger.info("🔌 [Prisma] Desconectado do banco de dados.")
+    except Exception:
+        pass

@@ -4216,7 +4216,6 @@ class OrderOptionalCreateInput(TypedDict, total=False):
     """Optional arguments to the Order create method"""
     id: _int
     userId: Optional[_str]
-    status: _str
     createdAt: datetime.datetime
     items: 'OrderItemCreateManyNestedWithoutRelationsInput'
 
@@ -4234,7 +4233,6 @@ class OrderOptionalCreateWithoutRelationsInput(TypedDict, total=False):
     """Optional arguments to the Order create method, without relations"""
     id: _int
     userId: Optional[_str]
-    status: _str
     createdAt: datetime.datetime
 
 
@@ -4275,7 +4273,6 @@ class OrderUpdateInput(TypedDict, total=False):
     userId: Optional[_str]
     cep: _str
     totalPrice: Union[AtomicFloatInput, _float]
-    status: _str
     createdAt: datetime.datetime
     items: 'OrderItemUpdateManyWithoutRelationsInput'
 
@@ -4286,7 +4283,6 @@ class OrderUpdateManyMutationInput(TypedDict, total=False):
     userId: Optional[_str]
     cep: _str
     totalPrice: Union[AtomicFloatInput, _float]
-    status: _str
     createdAt: datetime.datetime
 
 
@@ -4354,14 +4350,6 @@ _Order_totalPrice_OrderByInput = TypedDict(
     total=True
 )
 
-_Order_status_OrderByInput = TypedDict(
-    '_Order_status_OrderByInput',
-    {
-        'status': 'SortOrder',
-    },
-    total=True
-)
-
 _Order_createdAt_OrderByInput = TypedDict(
     '_Order_createdAt_OrderByInput',
     {
@@ -4393,7 +4381,6 @@ OrderOrderByInput = Union[
     '_Order_userId_OrderByInput',
     '_Order_cep_OrderByInput',
     '_Order_totalPrice_OrderByInput',
-    '_Order_status_OrderByInput',
     '_Order_createdAt_OrderByInput',
     '_Order_RelevanceOrderByInput',
 ]
@@ -4972,7 +4959,6 @@ class OrderWhereInput(TypedDict, total=False):
     userId: Union[None, _str, 'types.StringFilter']
     cep: Union[_str, 'types.StringFilter']
     totalPrice: Union[_float, 'types.FloatFilter']
-    status: Union[_str, 'types.StringFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeFilter']
     items: 'OrderItemListRelationFilter'
 
@@ -4989,7 +4975,6 @@ class OrderWhereInputRecursive1(TypedDict, total=False):
     userId: Union[None, _str, 'types.StringFilter']
     cep: Union[_str, 'types.StringFilter']
     totalPrice: Union[_float, 'types.FloatFilter']
-    status: Union[_str, 'types.StringFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeFilter']
     items: 'OrderItemListRelationFilter'
 
@@ -5006,7 +4991,6 @@ class OrderWhereInputRecursive2(TypedDict, total=False):
     userId: Union[None, _str, 'types.StringFilter']
     cep: Union[_str, 'types.StringFilter']
     totalPrice: Union[_float, 'types.FloatFilter']
-    status: Union[_str, 'types.StringFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeFilter']
     items: 'OrderItemListRelationFilter'
 
@@ -5023,7 +5007,6 @@ class OrderWhereInputRecursive3(TypedDict, total=False):
     userId: Union[None, _str, 'types.StringFilter']
     cep: Union[_str, 'types.StringFilter']
     totalPrice: Union[_float, 'types.FloatFilter']
-    status: Union[_str, 'types.StringFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeFilter']
     items: 'OrderItemListRelationFilter'
 
@@ -5040,7 +5023,6 @@ class OrderWhereInputRecursive4(TypedDict, total=False):
     userId: Union[None, _str, 'types.StringFilter']
     cep: Union[_str, 'types.StringFilter']
     totalPrice: Union[_float, 'types.FloatFilter']
-    status: Union[_str, 'types.StringFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeFilter']
     items: 'OrderItemListRelationFilter'
 
@@ -5057,7 +5039,6 @@ class OrderScalarWhereWithAggregatesInput(TypedDict, total=False):
     userId: Union[_str, 'types.StringWithAggregatesFilter']
     cep: Union[_str, 'types.StringWithAggregatesFilter']
     totalPrice: Union[_float, 'types.FloatWithAggregatesFilter']
-    status: Union[_str, 'types.StringWithAggregatesFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeWithAggregatesFilter']
 
     AND: List['OrderScalarWhereWithAggregatesInputRecursive1']
@@ -5071,7 +5052,6 @@ class OrderScalarWhereWithAggregatesInputRecursive1(TypedDict, total=False):
     userId: Union[_str, 'types.StringWithAggregatesFilter']
     cep: Union[_str, 'types.StringWithAggregatesFilter']
     totalPrice: Union[_float, 'types.FloatWithAggregatesFilter']
-    status: Union[_str, 'types.StringWithAggregatesFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeWithAggregatesFilter']
 
     AND: List['OrderScalarWhereWithAggregatesInputRecursive2']
@@ -5085,7 +5065,6 @@ class OrderScalarWhereWithAggregatesInputRecursive2(TypedDict, total=False):
     userId: Union[_str, 'types.StringWithAggregatesFilter']
     cep: Union[_str, 'types.StringWithAggregatesFilter']
     totalPrice: Union[_float, 'types.FloatWithAggregatesFilter']
-    status: Union[_str, 'types.StringWithAggregatesFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeWithAggregatesFilter']
 
     AND: List['OrderScalarWhereWithAggregatesInputRecursive3']
@@ -5099,7 +5078,6 @@ class OrderScalarWhereWithAggregatesInputRecursive3(TypedDict, total=False):
     userId: Union[_str, 'types.StringWithAggregatesFilter']
     cep: Union[_str, 'types.StringWithAggregatesFilter']
     totalPrice: Union[_float, 'types.FloatWithAggregatesFilter']
-    status: Union[_str, 'types.StringWithAggregatesFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeWithAggregatesFilter']
 
     AND: List['OrderScalarWhereWithAggregatesInputRecursive4']
@@ -5113,7 +5091,6 @@ class OrderScalarWhereWithAggregatesInputRecursive4(TypedDict, total=False):
     userId: Union[_str, 'types.StringWithAggregatesFilter']
     cep: Union[_str, 'types.StringWithAggregatesFilter']
     totalPrice: Union[_float, 'types.FloatWithAggregatesFilter']
-    status: Union[_str, 'types.StringWithAggregatesFilter']
     createdAt: Union[datetime.datetime, 'types.DateTimeWithAggregatesFilter']
 
 
@@ -5123,7 +5100,6 @@ class OrderGroupByOutput(TypedDict, total=False):
     userId: _str
     cep: _str
     totalPrice: _float
-    status: _str
     createdAt: datetime.datetime
     _sum: 'OrderSumAggregateOutput'
     _avg: 'OrderAvgAggregateOutput'
@@ -5150,7 +5126,6 @@ class OrderScalarAggregateOutput(TypedDict, total=False):
     userId: _str
     cep: _str
     totalPrice: _float
-    status: _str
     createdAt: datetime.datetime
 
 
@@ -5164,7 +5139,6 @@ class OrderMaxAggregateInput(TypedDict, total=False):
     userId: bool
     cep: bool
     totalPrice: bool
-    status: bool
     createdAt: bool
 
 
@@ -5174,7 +5148,6 @@ class OrderMinAggregateInput(TypedDict, total=False):
     userId: bool
     cep: bool
     totalPrice: bool
-    status: bool
     createdAt: bool
 
 
@@ -5195,7 +5168,6 @@ OrderCountAggregateInput = TypedDict(
         'userId': bool,
         'cep': bool,
         'totalPrice': bool,
-        'status': bool,
         'createdAt': bool,
         '_all': bool,
     },
@@ -5209,7 +5181,6 @@ OrderCountAggregateOutput = TypedDict(
         'userId': int,
         'cep': int,
         'totalPrice': int,
-        'status': int,
         'createdAt': int,
         '_all': int,
     },
@@ -5222,7 +5193,6 @@ OrderKeys = Literal[
     'userId',
     'cep',
     'totalPrice',
-    'status',
     'createdAt',
     'items',
 ]
@@ -5231,7 +5201,6 @@ OrderScalarFieldKeys = Literal[
     'userId',
     'cep',
     'totalPrice',
-    'status',
     'createdAt',
 ]
 OrderScalarFieldKeysT = TypeVar('OrderScalarFieldKeysT', bound=OrderScalarFieldKeys)

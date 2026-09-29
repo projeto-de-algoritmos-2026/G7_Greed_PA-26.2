@@ -3678,11 +3678,11 @@ class OrderActions(Generic[_PrismaModelT]):
         Example
         -------
         ```py
-        # find the second Order record ordered by the status field
+        # find the second Order record ordered by the createdAt field
         order = await Order.prisma().find_first_or_raise(
             skip=1,
             order={
-                'status': 'desc',
+                'createdAt': 'desc',
             },
         )
         ```
@@ -3850,7 +3850,7 @@ class OrderActions(Generic[_PrismaModelT]):
         # update all Order records
         total = await Order.prisma().update_many(
             data={
-                'createdAt': datetime.datetime.utcnow()
+                'id': 1228891816
             },
             where={}
         )
@@ -3914,7 +3914,7 @@ class OrderActions(Generic[_PrismaModelT]):
         results = await Order.prisma().count(
             select={
                 '_all': True,
-                'id': True,
+                'userId': True,
             },
         )
         ```
@@ -3981,7 +3981,7 @@ class OrderActions(Generic[_PrismaModelT]):
         results = await Order.prisma().count(
             select={
                 '_all': True,
-                'userId': True,
+                'cep': True,
             },
         )
         ```
@@ -4121,10 +4121,10 @@ class OrderActions(Generic[_PrismaModelT]):
         Example
         -------
         ```py
-        # group Order records by cep values
+        # group Order records by totalPrice values
         # and count how many records are in each group
         results = await Order.prisma().group_by(
-            ['cep'],
+            ['totalPrice'],
             count=True,
         )
         ```
@@ -4213,7 +4213,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         users = await OrderItem.prisma().query_raw(
             'SELECT * FROM OrderItem WHERE id = $1',
-            1228891816,
+            255202753,
         )
         ```
         """
@@ -4253,7 +4253,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         user = await OrderItem.prisma().query_first(
             'SELECT * FROM OrderItem WHERE orderId = $1',
-            255202753,
+            1223573862,
         )
         ```
         """
@@ -4292,10 +4292,10 @@ class OrderItemActions(Generic[_PrismaModelT]):
         orderitem = await OrderItem.prisma().create(
             data={
                 # data to create a OrderItem record
-                'orderId': 1223573862,
-                'productId': 541269159,
-                'quantity': 1064846676,
-                'price': 508382461.102426,
+                'orderId': 541269159,
+                'productId': 1064846676,
+                'quantity': 508382461,
+                'price': 1024265714.87207,
             },
         )
         ```
@@ -4350,17 +4350,17 @@ class OrderItemActions(Generic[_PrismaModelT]):
             data=[
                 {
                     # data to create a OrderItem record
-                    'orderId': 872078403,
-                    'productId': 1874748096,
-                    'quantity': 916896761,
-                    'price': 769267518.82031,
+                    'orderId': 1874748096,
+                    'productId': 916896761,
+                    'quantity': 769267518,
+                    'price': 820312479.9272,
                 },
                 {
                     # data to create a OrderItem record
-                    'orderId': 92728044,
-                    'productId': 344858293,
-                    'quantity': 1121741130,
-                    'price': 1495896251.20852,
+                    'orderId': 344858293,
+                    'productId': 1121741130,
+                    'quantity': 1495896251,
+                    'price': 208521688.86081,
                 },
             ],
             skip_duplicates=True,
@@ -4414,7 +4414,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         orderitem = await OrderItem.prisma().delete(
             where={
-                'id': 860811569,
+                'id': 1660932118,
             },
         )
         ```
@@ -4466,7 +4466,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         orderitem = await OrderItem.prisma().find_unique(
             where={
-                'id': 1660932118,
+                'id': 525761943,
             },
         )
         ```
@@ -4517,7 +4517,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         orderitem = await OrderItem.prisma().find_unique_or_raise(
             where={
-                'id': 525761943,
+                'id': 736209796,
             },
         )
         ```
@@ -4769,7 +4769,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         orderitem = await OrderItem.prisma().update(
             where={
-                'id': 736209796,
+                'id': 493907821,
             },
             data={
                 # data to update the OrderItem record to
@@ -4826,21 +4826,21 @@ class OrderItemActions(Generic[_PrismaModelT]):
         ```py
         orderitem = await OrderItem.prisma().upsert(
             where={
-                'id': 493907821,
+                'id': 639686562,
             },
             data={
                 'create': {
-                    'id': 493907821,
-                    'orderId': 92728044,
-                    'productId': 344858293,
-                    'quantity': 1121741130,
-                    'price': 1495896251.20852,
+                    'id': 639686562,
+                    'orderId': 344858293,
+                    'productId': 1121741130,
+                    'quantity': 1495896251,
+                    'price': 208521688.86081,
                 },
                 'update': {
-                    'orderId': 92728044,
-                    'productId': 344858293,
-                    'quantity': 1121741130,
-                    'price': 1495896251.20852,
+                    'orderId': 344858293,
+                    'productId': 1121741130,
+                    'quantity': 1495896251,
+                    'price': 208521688.86081,
                 },
             },
         )
@@ -4888,7 +4888,7 @@ class OrderItemActions(Generic[_PrismaModelT]):
         # update all OrderItem records
         total = await OrderItem.prisma().update_many(
             data={
-                'id': 639686562
+                'id': 654007347
             },
             where={}
         )

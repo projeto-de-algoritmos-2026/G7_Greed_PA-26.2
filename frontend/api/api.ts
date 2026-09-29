@@ -129,3 +129,75 @@ export async function calculateRouteAPI(graph: any, startNode: number, endNode: 
         return null;
     }
 }
+
+export async function calculateMinimizeLatenessAPI(payload: {
+    orders: any[];
+    startTime?: string;
+    segmentDurationsMinutes?: number[];
+    serviceTimeMinutes?: number;
+}) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/schedule/minimize-lateness`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Falha ao calcular Minimize Lateness");
+        return await res.json();
+    } catch (e) {
+        console.error("Erro na API de Minimize Lateness:", e);
+        return null;
+    }
+}
+
+export async function compareSchedulingStrategiesAPI(payload: {
+    orders: any[];
+    startTime?: string;
+    durationsMap?: Record<number, number>;
+    serviceTimeMinutes?: number;
+}) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/schedule/compare`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Falha ao comparar estratégias");
+        return await res.json();
+    } catch (e) {
+        console.error("Erro na API de comparação:", e);
+        return null;
+    }
+}
+
+export async function calculateChainRouteAPI(payload: {
+    graph: any;
+    stopNodeIds: number[];
+    algorithm?: string;
+    speedKmh?: number;
+}) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/routes/chain-calculate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                graph: payload.graph,
+                stopNodeIds: payload.stopNodeIds,
+                algorithm: payload.algorithm || "dijkstra",
+                speedKmh: payload.speedKmh || 30.0
+            })
+        });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        console.error("Erro na API de Rota em Cadeia:", e);
+        return null;
+    }
+}
+

@@ -1,7 +1,7 @@
-# Delivery Routing com Grafos - Stock.io
+# Delivery Routing & Scheduling com Greed - Stock.io
 
 Número da Lista: 2<br>
-Conteúdo da Disciplina: Greed<br>
+Conteúdo da Disciplina: Greed (Algoritmos Ambiciosos)<br>
 
 ## Alunos
 
@@ -12,167 +12,114 @@ Conteúdo da Disciplina: Greed<br>
 
 ## Sobre
 
-Este projeto foi desenvolvido para a disciplina de **Projeto de Algoritmos (PA) - 2026.2**, com foco na aplicação prática de teoria de grafos no mundo real.
+Este projeto foi desenvolvido para a disciplina de **Projeto de Algoritmos (PA) - 2026.2**, com foco na aplicação prática de **Algoritmos Ambiciosos (Greedy Algorithms)** e integração com teoria de grafos no mundo real.
 
-A aplicação simula um sistema de rotas de entrega (delivery) para a plataforma **stock.io**, conectando pontos geográficos reais através do **OpenStreetMap**, extraindo a malha viária e calculando a rota mais curta e viável utilizando os algoritmos de **Dijkstra** e **Bellman-Ford**.
+A aplicação simula o ecossistema de logística e entregas da plataforma **stock.io**, integrando dados reais do **OpenStreetMap** e resolvendo o problema clássico de agendamento de tarefas: **Scheduling to Minimize Lateness** (Minimização do Atraso Máximo).
 
-## Screenshots
-
-![Tela Inicial](frontend/public/telaInicial.png)
-*Figura 1: Visão geral da tela inicial.*
-
-![Execução Bellman-Ford](frontend/public/bellmanFord.png)
-*Figura 2: Cálculo de rota utilizando o algoritmo de Bellman-Ford.*
-
-![Execução Bellman-Ford](assets/run_bellman_ford.PNG)
-*Figura 3: Implementação do algoritmo Bellman-Ford.*
-
-![Min-Heap](assets/minheap.PNG)
-<br>*Figura 4: Implementação do MinHeap.*
-
-![Execução Dijkstra](assets/run_dijkstra.PNG)
-*Figura 5: Implementação do algoritmo Dijkstra.*
-
-![Servidores em execução](assets/terminal.PNG)
-*Figura 6: Servidores em execução.*
-
-## Tecnologias Utilizadas
-
-O projeto está dividido em duas partes principais:
-
-### Frontend
-- **Framework:** [Next.js](https://nextjs.org/) com React 18
-- **Linguagem:** TypeScript
-- **Estilização:** TailwindCSS
-- **Mapas:** Leaflet + React-Leaflet
-- **Geocoding:** ViaCEP + Nominatim (Busca avançada com fallback estruturado)
-
-### Backend
-- **Framework:** [FastAPI](https://fastapi.tiangolo.com/)
-- **Linguagem:** Python 3.11+
-- **ORM:** Prisma Client Python
-- **Banco de Dados:** SQLite (via Prisma)
+O sistema organiza a agenda do entregador quando ele pega um lote com múltiplos pedidos simultâneos, garantindo matematicamente o menor atraso máximo possível através da regra gulosa **Earliest Deadline First (EDF)**. Em seguida, a rota contínua em cadeia é traçada no mapa real conectando sequencialmente os clientes na ordem ótima gerada pelo algoritmo, calculando os tempos reais de deslocamento e exibindo uma timeline lateral interativa.
 
 ---
 
 ## Funcionalidades e Algoritmos
 
-* **Geocodificação Inteligente:** O sistema aceita a entrada de CEPs e utiliza múltiplas APIs (ViaCEP + Nominatim) para traçar as exatas coordenadas de ruas e bairros brasileiros de forma dinâmica e resiliente.
-* **Mapeamento em Tempo Real:** Conexão direta com a API do **Overpass / OSM** para extrair a malha viária (ruas, rodovias, avenidas) baseada na distância entre a Origem e o Destino.
-* **Algoritmo de Dijkstra:** Implementação clássica com fila de prioridades para encontrar o caminho mais rápido com pesos não-negativos.
-* **Algoritmo de Bellman-Ford:** Implementação em Python (backend) e TypeScript (frontend) com suporte a verificação de ciclos negativos e otimização de *early stopping*.
-* **Visualização Animada:** Ao calcular a rota, a interface projeta e anima o processo de "exploração" do algoritmo pelos caminhos do grafo até a descoberta da rota ideal.
+### 1. Algoritmo Ambicioso: Minimize Lateness (Fila de Entregas)
+* **Objetivo:** Organizar o cronograma de atendimento do entregador ao assumir um lote de pedidos com prazos limites (deadlines) distintos.
+* **Regra Gulosa:** **Earliest Deadline First (EDF)** — os pedidos são ordenados estritamente em ordem crescente de seus prazos de entrega ($d_1 \le d_2 \le \dots \le d_n$), independentemente da duração estimada da viagem.
+* **Formulação Matemática:**
+  * Dado um conjunto de pedidos com tempos de viagem/atendimento $t_i$ e prazos $d_i$.
+  * Tempo de término do pedido $i$: $f_i = s_i + t_i$.
+  * Atraso individual (lateness): $l_i = \max(0, f_i - d_i)$.
+  * Atraso máximo do lote: $L_{\max} = \max_{i} l_i$.
+* **Complexidade de Tempo:** $O(n \log n)$, dominada pela ordenação dos prazos.
+* **Garantia Teórica de Optimalidade:** Provado por Jon Kleinberg e Éva Tardos (*Algorithm Design*, Capítulo 4) através do método do **argumento da troca de inversões (Exchange Argument)**: qualquer agendamento sem tempo ocioso que contenha uma inversão pode ter pedidos adjacentes invertidos sem aumentar o atraso máximo, demonstrando que o agendamento guloso por deadline é estritamente ótimo.
+
+### 2. Traçado da Rota Contínua em Cadeia (Chain Routing)
+* Após a definição da fila pelo Minimize Lateness, o sistema traça uma **rota contínua** conectando:
+  $$\text{Origem (Galpão)} \longrightarrow \text{Cliente 1} \longrightarrow \text{Cliente 2} \longrightarrow \dots \longrightarrow \text{Cliente } N$$
+* Para cada trecho consecutivo, o menor caminho viário é calculado utilizando os algoritmos de **Dijkstra** ou **Bellman-Ford**.
+* O custo retornado pelo algoritmo para cada segmento (distância e tempo em minutos baseado no veículo) alimenta o cálculo do cronograma, permitindo determinar com exatidão se houve atraso e a folga (slack) de cada parada.
+
+### 3. Calendário de Entregas & Timeline Lateral Interativa
+* **Calendário & Lote:** O entregador pode visualizar os pedidos disponíveis, selecionar múltiplos pedidos com checkboxes e ajustar prazos limites para simular cenários.
+* **Timeline Lateral:** Exibe a agenda detalhada passo a passo com horário de saída do depósito, horários de chegada previstos, deadlines prometidos e alertas de atraso.
+* **Painel Comparativo Didático:** Compara em tempo real a regra gulosa (EDF) contra estratégias ingênuas como **FIFO (Ordem de Chegada)** e **SPT (Shortest Processing Time)**, demonstrando empiricamente a superioridade do algoritmo de Greed.
+* **Visualização no Mapa:** Marcadores numerados (1, 2, 3...) e rota contínua destacada com animação de fluxo.
 
 ---
 
-## Comparação de Eficiência: Dijkstra x Bellman-Ford
+## Comparativo Teórico de Heurísticas
 
-Na plataforma **stock.io**, oferecemos a visualização e execução de dois dos mais importantes algoritmos de caminho mínimo. Como nosso grafo representa uma malha viária do mundo real (onde as distâncias são estritamente positivas), podemos observar uma diferença brutal na eficiência:
-
-### Dijkstra
-- **Complexidade de Tempo:** O(V log V + E) ou O(V^2), dependendo da estrutura de fila de prioridade utilizada.
-- **Vantagem no Mapa:** É extremamente rápido e eficiente para mapas de ruas. Ele se expande geograficamente em formato de "diamante" (buscando em largura a partir da origem), processando apenas os nós mais promissores.
-- **Uso Prático:** Para distâncias geográficas longas (acima de 15km), o Dijkstra encontra a rota em milissegundos.
-
-### Bellman-Ford
-- **Complexidade de Tempo:** O(V * E).
-- **Desvantagem no Mapa:** Ele relaxa **todas** as arestas do mapa, repetidas vezes (até V-1). Num grafo de cidade com milhares de nós (esquinas) e arestas (ruas), isso resulta em milhões de operações computacionais desnecessárias, já que não temos ruas com "distância negativa".
-- **Otimização Implementada:** Para viabilizar a demonstração do Bellman-Ford no navegador sem travamentos, implementamos um *Early Stopping* (parada antecipada). O algoritmo interrompe o laço caso nenhuma distância seja relaxada durante uma iteração inteira, cortando o processamento exponencial pela metade em cenários lineares. Ainda assim, é visivelmente mais lento que o Dijkstra na animação de exploração do mapa.
+| Estratégia | Regra de Ordenação | Atraso Máximo ($L_{\max}$) | Optimalidade |
+| :--- | :--- | :--- | :--- |
+| **Minimize Lateness (EDF)** | Menor deadline primeiro ($d_i$) | **Mínimo possível** | **Ótima Comprovada** |
+| **FIFO** | Ordem de chegada / criação | Alto (sacrifica prazos urgentes) | Não-ótima |
+| **SPT (Shortest Processing Time)** | Menor tempo de viagem ($t_i$) | Alto (adia entregas distantes com prazos curtos) | Não-ótima |
 
 ---
 
-## Instalação
+## Tecnologias Utilizadas
 
-### 1. Clonando o repositório
+### Frontend
+- **Framework:** Next.js com React 19
+- **Linguagem:** TypeScript
+- **Estilização:** TailwindCSS
+- **Mapas:** Leaflet + React-Leaflet
+- **Geocoding:** ViaCEP + OpenStreetMap (Nominatim)
+
+### Backend
+- **Framework:** FastAPI
+- **Linguagem:** Python 3.11+
+- **Algoritmos:** Implementações puras de Minimize Lateness, Dijkstra, Bellman-Ford e Min-Heap
+- **Banco de Dados:** Prisma ORM com SQLite / PostgreSQL e resiliência com dados de demonstração
+
+---
+
+## Instalação e Execução
+
+### 1. Clonando o Repositório
 
 ```bash
-git clone https://github.com/projeto-de-algoritmos-2026/G7_Grafos_PA-26.2.git
-cd G7_Grafos_PA-26.2
+git clone https://github.com/projeto-de-algoritmos-2026/G7_Greed_PA-26.2.git
+cd G7_Greed_PA-26.2
 ```
 
 ### 2. Configurando o Backend (Python / FastAPI)
 
-Abra um terminal e navegue até a pasta `backend`:
+Abra um terminal na pasta `backend`:
 
 ```bash
 cd backend
+python -m venv venv
+.\venv\Scripts\activate   # No Windows (ou source venv/bin/activate no Linux/Mac)
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
-
-1. **Crie um ambiente virtual e ative-o:**
-   - No Windows:
-     ```bash
-     python -m venv venv
-     .\venv\Scripts\activate
-     ```
-   - No Linux/Mac:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
-
-2. **Instale as dependências:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure o Banco de Dados (Prisma):**
-   Gere os schemas e sincronize com o SQLite:
-   ```bash
-   prisma generate
-   prisma db push
-   ```
-
-4. **Inicie o servidor local:**
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-   > A API estará rodando em `http://localhost:8000`. Você pode acessar a documentação interativa em `http://localhost:8000/docs`.
+> API disponível em: `http://localhost:8000` (Documentação interativa em `http://localhost:8000/docs`).
 
 ### 3. Configurando o Frontend (Node / Next.js)
 
-Abra **outro** terminal e navegue até a pasta `frontend`:
+Abra outro terminal na pasta `frontend`:
 
 ```bash
 cd frontend
+npm install
+npm run dev
 ```
+> Acesse a aplicação em: `http://localhost:3000`.
 
-1. **Instale as dependências:**
-   ```bash
-   npm install
-   ```
+---
 
-2. **Inicie o servidor de desenvolvimento:**
-   ```bash
-   npm run dev
-   ```
+## Como Utilizar o Calendário de Entregas (Passo a Passo)
 
-3. **Acesse a aplicação:**
-   Abra o seu navegador e acesse [http://localhost:3000](http://localhost:3000).
-
-## Uso
-
-### Credenciais de Acesso (Testes)
-
-Para acessar o sistema, você pode utilizar os seguintes usuários já cadastrados:
-
-**Cliente**
-- **Email:** mauricio@gmail.com
-- **Senha:** mauricio123@
-
-**Entregador**
-- **Email:** mauricioentregador@gmail.com
-- **Senha:** mauricio123@
-
-### Passo a Passo da Aplicação
-
-1. Faça login utilizando uma das credenciais acima
-2. Realize o pedido de um item na plataforma
-3. Acesse a plataforma como entregador
-4. Escolha um pedido
-5. Calcule a rota do pedido com o algoritmo escolhido
-
-## Outros
-
-### Vídeo da apresentação
-
-[![Vídeo da apresentação](https://img.youtube.com/vi/GAYAPzIV_Iw/0.jpg)](https://youtu.be/GAYAPzIV_Iw)
+1. Acesse `http://localhost:3000` no navegador.
+2. No menu superior, clique em **📅 CALENDÁRIO** ou acesse diretamente `/entregador/calendario` (ou faça login como entregador e acesse a lista de pedidos em `/orders`).
+3. No painel de **Parâmetros do Lote**, confira o CEP de Origem (Depósito), o horário de saída (ex: `09:00`) e selecione o meio de transporte (Moto, Carro, Bike).
+4. Na lista de pedidos, selecione os pedidos desejados para compor o lote.
+5. *(Opcional)* Altere o horário limite (deadline) de qualquer cliente no campo de horário para simular situações de folga ou risco.
+6. Clique no botão **"⚡ Organizar Fila (Minimize Lateness)"**.
+7. O sistema irá:
+   - Ordenar a fila de entregas pela regra gulosa do prazo mais próximo.
+   - Traçar a rota em cadeia ligando os clientes sequencialmente (Origem $\to$ 1 $\to$ 2 $\to$ 3...).
+   - Calcular os custos reais de deslocamento e gerar a timeline lateral com os horários e possíveis atrasos.
+   - Desenhar a rota contínua no mapa com marcadores numerados.
+8. Clique em **"Ver Comparativo (Greed vs Outros)"** para visualizar a comparação direta contra FIFO e SPT.
