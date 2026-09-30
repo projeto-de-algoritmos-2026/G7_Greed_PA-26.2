@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllOrders } from "../../api/api";
+import { getAllOrders } from "../../../api/api";
 import { FiPackage, FiCalendar, FiBox, FiTruck, FiMapPin, FiClock, FiZap, FiCheckSquare } from "react-icons/fi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,24 +17,28 @@ export default function OrdersPage() {
     async function fetchOrders() {
       try {
         const data = await getAllOrders();
-        
-        // Assegura que todos os pedidos têm um deadline formatado
+
+        // Assegura que todos os pedidos têm um deadline formatado para o dia de hoje
         const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
         const enriched = data.map((o: any, idx: number) => {
-          let deadlineStr = o.deadline;
-          if (!deadlineStr) {
-            const dl = new Date(now.getTime() + (30 + idx * 25) * 60000);
-            deadlineStr = dl.toISOString();
+          let dl = o.deadline ? new Date(o.deadline) : null;
+          if (!dl || isNaN(dl.getTime())) {
+            dl = new Date(now.getTime() + (45 + idx * 30) * 60000);
           }
-          return { ...o, deadline: deadlineStr };
+          const todayWithTime = new Date();
+          todayWithTime.setHours(dl.getHours(), dl.getMinutes(), 0, 0);
+          const localISO = `${todayWithTime.getFullYear()}-${pad(todayWithTime.getMonth() + 1)}-${pad(todayWithTime.getDate())}T${pad(todayWithTime.getHours())}:${pad(todayWithTime.getMinutes())}:00`;
+
+          return { ...o, deadline: localISO };
         });
 
         setOrders(enriched);
-        
+
         // Fetch addresses for each unique CEP
         const uniqueCeps = [...new Set(enriched.map((o: any) => o.cep).filter(Boolean))];
         const addressData: Record<string, string> = {};
-        
+
         await Promise.all(uniqueCeps.map(async (cep) => {
           try {
             const cleanCep = (cep as string).replace(/\D/g, '');
@@ -52,7 +56,7 @@ export default function OrdersPage() {
             addressData[cep as string] = "Erro ao carregar endereço";
           }
         }));
-        
+
         setAddresses(addressData);
 
       } catch (error) {
@@ -64,21 +68,53 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("stockio_selected_order_ids");
+      if (saved) {
+        try {
+          const ids = JSON.parse(saved);
+          if (Array.isArray(ids)) {
+            setSelectedOrderIds(ids);
+          }
+        } catch (e) { }
+      }
+    }
+  }, []);
+
   const router = useRouter();
 
   const handleDelivery = (orderId: number) => {
     toast.success(`Iniciando entrega individual do pedido #${orderId}!`);
-    router.push(`/order/${orderId}`);
+    router.push(`/delivery/order/${orderId}`);
   };
 
   const toggleSelectOrder = (orderId: number) => {
-    setSelectedOrderIds(prev => 
-      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
-    );
+    setSelectedOrderIds(prev => {
+      const next = prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId];
+      if (typeof window !== "undefined") {
+        if (next.length > 0) {
+          sessionStorage.setItem("stockio_selected_order_ids", JSON.stringify(next));
+        } else {
+          sessionStorage.removeItem("stockio_selected_order_ids");
+        }
+      }
+      return next;
+    });
   };
 
   const handleGoToCalendar = () => {
-    router.push('/entregador/calendario');
+    if (selectedOrderIds.length > 0) {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("stockio_selected_order_ids", JSON.stringify(selectedOrderIds));
+      }
+      router.push(`/delivery/batchOrder?orders=${selectedOrderIds.join(',')}`);
+    } else {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("stockio_selected_order_ids");
+      }
+      router.push('/delivery/batchOrder');
+    }
   };
 
   if (loading) {
@@ -93,34 +129,8 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F2EB] flex flex-col font-sans transition-colors duration-300 pb-24">
-      
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 pt-10">
-        
-        {/* Banner de Destaque para o Calendário de Entregas (Módulo Greed) */}
-        <div className="mb-8 p-6 rounded-3xl bg-[#17181A] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-[#6032F6]/30">
-          <div className="space-y-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="bg-[#6032F6] text-white px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-                Novo Recurso Greed
-              </span>
-              <span className="text-zinc-400 text-xs font-bold">Minimize Lateness</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide">
-              Calendário & Fila Otimizada de Entregas
-            </h2>
-            <p className="text-zinc-300 text-xs sm:text-sm max-w-xl font-medium">
-              Pegou vários pedidos simultâneos? O algoritmo organiza a agenda do entregador pelo prazo limite mais próximo, minimiza o atraso máximo e traça a rota contínua em cadeia.
-            </p>
-          </div>
-          <button
-            onClick={handleGoToCalendar}
-            className="px-6 py-3.5 rounded-full bg-[#6032F6] hover:bg-[#5227DF] active:scale-95 text-white font-black text-xs tracking-wider uppercase transition-all shadow-lg hover:shadow-[#6032F6]/40 flex items-center gap-2 cursor-pointer shrink-0"
-          >
-            <FiCalendar className="text-base" />
-            <span>Abrir Calendário</span>
-          </button>
-        </div>
 
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 pt-10">
         {/* Título da Página e Navegação */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-[#17181A] text-2xl sm:text-3xl font-black tracking-wide uppercase leading-tight flex items-center gap-3">
@@ -128,15 +138,15 @@ export default function OrdersPage() {
             Painel de Pedidos
           </h1>
           <div className="flex items-center gap-3">
-            <Link 
-              href="/entregador/calendario" 
-              className="px-4 py-2.5 rounded-full bg-white text-[#6032F6] border border-[#6032F6]/30 hover:bg-[#6032F6]/5 font-black text-xs tracking-wider uppercase transition-transform hover:scale-[1.02] shadow-sm flex items-center gap-2"
+            <button
+              onClick={handleGoToCalendar}
+              className="px-4 py-2.5 rounded-full bg-white text-[#6032F6] border border-[#6032F6]/30 hover:bg-[#6032F6]/5 font-black text-xs tracking-wider uppercase transition-transform hover:scale-[1.02] shadow-sm flex items-center gap-2 cursor-pointer"
             >
               <FiCalendar />
-              Ver Calendário
-            </Link>
-            <Link 
-              href="/" 
+              Ver Calendário {selectedOrderIds.length > 0 && `(${selectedOrderIds.length})`}
+            </button>
+            <Link
+              href="/"
               className="px-5 py-2.5 rounded-full bg-[#17181A] text-[#F6F3E4] font-bold text-xs tracking-wider uppercase transition-transform hover:scale-[1.02] shadow-md flex items-center gap-2"
             >
               Voltar
@@ -164,11 +174,10 @@ export default function OrdersPage() {
                 : deadlineDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
               return (
-                <div 
-                  key={order.id} 
-                  className={`bg-white rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 ${
-                    isSelected ? "border-[#6032F6]" : "border-transparent"
-                  }`}
+                <div
+                  key={order.id}
+                  className={`bg-white rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 ${isSelected ? "border-[#6032F6]" : "border-transparent"
+                    }`}
                 >
                   <div className="p-5 sm:p-6">
                     {/* Cabeçalho do Card */}
@@ -200,7 +209,7 @@ export default function OrdersPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center md:items-end justify-between md:justify-start gap-4">
                         {/* Prazo Limite (Deadline) */}
                         <div className="bg-[#F5F2EB] px-3.5 py-1.5 rounded-2xl flex items-center gap-2">
@@ -251,7 +260,7 @@ export default function OrdersPage() {
                         ))}
                       </div>
                     </div>
-                    
+
                     {/* Rodapé do Card (Endereço e Botões) */}
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-[#F5F2EB]">
                       {order.cep ? (
@@ -274,15 +283,14 @@ export default function OrdersPage() {
                       <div className="flex items-center gap-3 w-full md:w-auto">
                         <button
                           onClick={() => toggleSelectOrder(order.id)}
-                          className={`flex-1 md:flex-initial px-4 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-[#6032F6]/10 text-[#6032F6] border border-[#6032F6]"
-                              : "bg-[#F5F2EB] text-[#17181A] hover:bg-[#EBE7DD]"
-                          }`}
+                          className={`flex-1 md:flex-initial px-4 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${isSelected
+                            ? "bg-[#6032F6]/10 text-[#6032F6] border border-[#6032F6]"
+                            : "bg-[#F5F2EB] text-[#17181A] hover:bg-[#EBE7DD]"
+                            }`}
                         >
                           {isSelected ? "✓ Selecionado" : "+ Lote"}
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelivery(order.id)}
                           className="flex-1 md:flex-initial px-6 py-3 rounded-full bg-[#17181A] hover:bg-[#2A2B2E] active:scale-[0.98] text-white font-black text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
                         >
@@ -313,7 +321,18 @@ export default function OrdersPage() {
             className="px-6 py-2.5 rounded-full bg-[#6032F6] hover:bg-[#5227DF] text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md"
           >
             <FiZap />
-            <span>Montar Agenda no Calendário</span>
+            <span>Montar Agenda no Calendário ({selectedOrderIds.length})</span>
+          </button>
+          <button
+            onClick={() => {
+              setSelectedOrderIds([]);
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem("stockio_selected_order_ids");
+              }
+            }}
+            className="text-xs text-zinc-400 hover:text-white uppercase font-bold transition-colors cursor-pointer px-2 py-1"
+          >
+            Limpar
           </button>
         </div>
       )}

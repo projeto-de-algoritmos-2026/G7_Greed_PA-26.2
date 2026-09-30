@@ -134,7 +134,7 @@ export default function MultiStopDeliveryMap({
                         <div><strong>Chegada Prevista:</strong> ${stop.arrivalFormatted || '--:--'}</div>
                         <div><strong>Prazo (Deadline):</strong> ${stop.deadlineFormatted || '--:--'}</div>
                         <div style="margin-top: 3px; font-weight: bold; color: ${isDelayed ? '#DC2626' : '#16A34A'};">
-                            ${isDelayed ? `⚠️ Atraso: +${stop.latenessMinutes} min` : '✅ Dentro do prazo'}
+                            ${isDelayed ? `⚠️ Atraso: ${stop.latenessMinutes} min` : '✅ Dentro do prazo'}
                         </div>
                     </div>
                     ` : `
@@ -240,22 +240,6 @@ export default function MultiStopDeliveryMap({
     return (
         <div className="relative w-full h-full min-h-[420px] rounded-3xl overflow-hidden shadow-inner bg-[#EBE7DD]">
             <div ref={mapRef} className="w-full h-full min-h-[420px] z-0" />
-            
-            {/* Legenda Flutuante Discreta no Topo */}
-            <div className="absolute top-4 right-4 z-[400] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-black/5 flex items-center gap-3 text-xs font-bold text-[#17181A]">
-                <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#17181A] border border-white inline-block"></span>
-                    <span>Origem</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#6032F6] inline-block"></span>
-                    <span>No Prazo</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-rose-600 inline-block"></span>
-                    <span>Com Atraso</span>
-                </div>
-            </div>
         </div>
     );
 }

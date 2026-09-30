@@ -47,18 +47,22 @@ def sort_by_earliest_deadline(orders: List[Dict[str, Any]]) -> List[Dict[str, An
     def get_deadline_key(order: Dict[str, Any]):
         dl = order.get("deadline")
         if isinstance(dl, datetime):
-            return dl
-        if isinstance(dl, str):
-            return parse_iso_datetime(dl)
-        # Se for timestamp numérico ou minutos
-        if isinstance(dl, (int, float)):
-            return datetime.fromtimestamp(dl)
-        # Se não tiver deadline definido, usa createdAt + janela padrão
-        created = order.get("createdAt") or order.get("created_at")
-        if created:
-            dt = parse_iso_datetime(created) if isinstance(created, str) else created
-            return dt + timedelta(minutes=60)
-        return datetime.max
+            dt = dl
+        elif isinstance(dl, str):
+            dt = parse_iso_datetime(dl)
+        elif isinstance(dl, (int, float)):
+            dt = datetime.fromtimestamp(dl)
+        else:
+            created = order.get("createdAt") or order.get("created_at")
+            if created:
+                c_dt = parse_iso_datetime(created) if isinstance(created, str) else created
+                dt = c_dt + timedelta(minutes=60)
+            else:
+                return (23, 59, 59)
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
+        # Ordena prioritariamente pelo horário limite do dia (hour, minute, second)
+        return (dt.hour, dt.minute, dt.second)
 
     return sorted(orders, key=get_deadline_key)
 
@@ -80,6 +84,9 @@ def calculate_schedule_lateness(
       - Atraso individual: l_i = max(0, f_i - d_i)
     - Atraso Máximo do Lote: L_max = max(l_i)
     """
+    if start_time.tzinfo is not None:
+        start_time = start_time.replace(tzinfo=None)
+
     current_time = start_time
     schedule_items = []
     max_lateness_minutes = 0.0
@@ -109,7 +116,22 @@ def calculate_schedule_lateness(
             # Fallback relativo a start_time
             deadline_dt = start_time + timedelta(minutes=45 + idx * 30)
 
-        # Cálculo do Atraso (Lateness em minutos)
+        # Normaliza tzinfo para comparação consistente (naive)
+        if deadline_dt.tzinfo is not None:
+            deadline_dt = deadline_dt.replace(tzinfo=None)
+
+        # Se a data do deadline for anterior à data do turno de entrega,
+        # alinha o deadline para a data do turno mantendo o horário prometido (HH:MM),
+        # pois o lote de entregas está sendo executado no dia de start_time.
+        if deadline_dt.date() < start_time.date():
+            deadline_dt = deadline_dt.replace(
+                year=start_time.year,
+                month=start_time.month,
+                day=start_time.day
+            )
+
+        # Cálculo do Atraso (Lateness em minutos):
+        # L_i = max(0, f_i - d_i)
         lateness_seconds = (finish_time - deadline_dt).total_seconds()
         lateness_minutes = max(0.0, round(lateness_seconds / 60.0, 1))
 

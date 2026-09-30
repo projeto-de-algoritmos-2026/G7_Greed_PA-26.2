@@ -31,7 +31,10 @@ import {
     FiInfo,
     FiRefreshCw,
     FiChevronRight,
-    FiPackage
+    FiPackage,
+    FiEdit2,
+    FiCheck,
+    FiX
 } from "react-icons/fi";
 import { FaWalking, FaBicycle, FaMotorcycle, FaCar } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -58,7 +61,10 @@ export default function DeliveryCalendarPage() {
 
     // Estados de Pedidos e Lote
     const [allOrders, setAllOrders] = useState<any[]>([]);
+    const [fullOrdersList, setFullOrdersList] = useState<any[]>([]);
+    const [isFilteredBySelection, setIsFilteredBySelection] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+    const [editingDeadlineOrderId, setEditingDeadlineOrderId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [processingSchedule, setProcessingSchedule] = useState(false);
 
@@ -87,29 +93,69 @@ export default function DeliveryCalendarPage() {
             try {
                 setLoading(true);
                 const orders = await getAllOrders();
-                
-                // Assegura que todos os pedidos possuam deadline formatado
+
+                // Assegura que todos os pedidos possuam deadline formatado no dia do turno
                 const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
                 const enriched = orders.map((o: any, idx: number) => {
-                    let deadlineStr = o.deadline;
-                    if (!deadlineStr) {
-                        const dl = new Date(now.getTime() + (30 + idx * 25) * 60000);
-                        deadlineStr = dl.toISOString();
+                    let dl = o.deadline ? new Date(o.deadline) : null;
+                    if (!dl || isNaN(dl.getTime())) {
+                        dl = new Date(now.getTime() + (45 + idx * 30) * 60000);
                     }
+                    const todayWithTime = new Date();
+                    todayWithTime.setHours(dl.getHours(), dl.getMinutes(), 0, 0);
+                    const localISO = `${todayWithTime.getFullYear()}-${pad(todayWithTime.getMonth() + 1)}-${pad(todayWithTime.getDate())}T${pad(todayWithTime.getHours())}:${pad(todayWithTime.getMinutes())}:00`;
+
                     return {
                         ...o,
-                        deadline: deadlineStr,
+                        deadline: localISO,
                         customerName: o.customerName || `Cliente #${o.id}`,
                         address: o.address || (KNOWN_COORDS[o.cep]?.address) || `CEP ${o.cep}`
                     };
                 });
 
-                setAllOrders(enriched);
+                setFullOrdersList(enriched);
 
-                // Por padrão, pré-seleciona os primeiros 4 pedidos para criar um lote inicial
-                if (enriched.length > 0) {
-                    const initialSelected = enriched.slice(0, 4).map((o: any) => o.id);
-                    setSelectedOrderIds(initialSelected);
+                // Recupera os IDs selecionados passados via query param ou sessionStorage
+                let targetIds: number[] = [];
+                if (typeof window !== "undefined") {
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const ordersParam = searchParams.get("orders") || searchParams.get("ids");
+                    if (ordersParam) {
+                        targetIds = ordersParam.split(",").map(Number).filter(n => !isNaN(n) && n > 0);
+                    } else {
+                        const stored = sessionStorage.getItem("stockio_selected_order_ids");
+                        if (stored) {
+                            try {
+                                const parsed = JSON.parse(stored);
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                    targetIds = parsed.map(Number).filter(n => !isNaN(n) && n > 0);
+                                }
+                            } catch (e) {
+                                console.error("Erro ao ler pedidos selecionados do sessionStorage:", e);
+                            }
+                        }
+                    }
+                }
+
+                if (targetIds.length > 0) {
+                    const filtered = enriched.filter((o: any) => targetIds.includes(o.id));
+                    if (filtered.length > 0) {
+                        setAllOrders(filtered);
+                        setSelectedOrderIds(filtered.map((o: any) => o.id));
+                        setIsFilteredBySelection(true);
+                    } else {
+                        setAllOrders(enriched);
+                        setSelectedOrderIds(enriched.map((o: any) => o.id));
+                        setIsFilteredBySelection(false);
+                    }
+                } else {
+                    setAllOrders(enriched);
+                    if (enriched.length > 0) {
+                        const initialSelected = enriched.slice(0, 4).map((o: any) => o.id);
+                        setSelectedOrderIds(initialSelected);
+                    }
+                    setIsFilteredBySelection(false);
                 }
             } catch (err) {
                 console.error("Erro ao carregar pedidos:", err);
@@ -135,7 +181,7 @@ export default function DeliveryCalendarPage() {
 
     // Alternar seleção de um pedido para o lote
     const toggleOrderSelection = (id: number) => {
-        setSelectedOrderIds(prev => 
+        setSelectedOrderIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
     };
@@ -151,15 +197,18 @@ export default function DeliveryCalendarPage() {
 
     // Modificar o prazo (deadline) de um pedido dinamicamente para simular atrasos
     const handleUpdateDeadline = (orderId: number, newTime: string) => {
-        setAllOrders(prev => prev.map(o => {
+        const updater = (prev: any[]) => prev.map(o => {
             if (o.id === orderId) {
                 const today = new Date();
                 const [h, m] = newTime.split(":").map(Number);
-                const updated = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
-                return { ...o, deadline: updated.toISOString() };
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const localISO = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}T${pad(h)}:${pad(m)}:00`;
+                return { ...o, deadline: localISO };
             }
             return o;
-        }));
+        });
+        setAllOrders(updater);
+        setFullOrdersList(updater);
     };
 
     // =========================================================================
@@ -181,12 +230,14 @@ export default function DeliveryCalendarPage() {
             const [startH, startM] = startTime.split(":").map(Number);
             const shiftDate = new Date();
             shiftDate.setHours(startH, startM, 0, 0);
+            const pad = (n: number) => String(n).padStart(2, '0');
+            const localStartISO = `${shiftDate.getFullYear()}-${pad(shiftDate.getMonth() + 1)}-${pad(shiftDate.getDate())}T${pad(startH)}:${pad(startM)}:00`;
 
             // 2. Geocodificar Origem e Destinos
             setStatusMessage("Localizando endereços e galpão de origem...");
             const originClean = originCep.replace(/\D/g, "");
             let originCoord = KNOWN_COORDS[originCep] || KNOWN_COORDS["70040-010"];
-            
+
             if (!KNOWN_COORDS[originCep]) {
                 const geo = await geocodeCEP(originCep);
                 if (geo) originCoord = { lat: geo.lat, lon: geo.lon, address: `Origem: CEP ${originCep}` };
@@ -208,7 +259,7 @@ export default function DeliveryCalendarPage() {
             setStatusMessage("Calculando cronograma ótimo (Earliest Deadline First)...");
             const scheduleData = await calculateMinimizeLatenessAPI({
                 orders: selectedOrders,
-                startTime: shiftDate.toISOString(),
+                startTime: localStartISO,
                 serviceTimeMinutes: serviceTimeMins
             });
 
@@ -293,7 +344,7 @@ export default function DeliveryCalendarPage() {
             // permitindo calcular com precisão se houve atraso.
             const refinedSchedule = await calculateMinimizeLatenessAPI({
                 orders: orderedItems.map((it: any) => it.order),
-                startTime: shiftDate.toISOString(),
+                startTime: localStartISO,
                 segmentDurationsMinutes: segmentCostsMinutes,
                 serviceTimeMinutes: serviceTimeMins
             });
@@ -347,7 +398,7 @@ export default function DeliveryCalendarPage() {
 
                 const compData = await compareSchedulingStrategiesAPI({
                     orders: selectedOrders,
-                    startTime: shiftDate.toISOString(),
+                    startTime: localStartISO,
                     durationsMap,
                     serviceTimeMinutes: serviceTimeMins
                 });
@@ -383,13 +434,13 @@ export default function DeliveryCalendarPage() {
 
     return (
         <div className="min-h-screen bg-[#F5F2EB] font-sans flex flex-col text-[#17181A]">
-            
+
             {/* Header Superior com Identidade Visual */}
-            <header className="bg-[#17181A] text-white px-6 py-4 border-b border-black/10 sticky top-0 z-30 shadow-md">
+            <header className="bg-[#17181A] text-white px-6 py-4 border-b border-black/10 sticky top-0 z-50 shadow-md">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                         <Link
-                            href="/orders"
+                            href="/delivery/orders"
                             className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all cursor-pointer shrink-0"
                             title="Voltar para Pedidos"
                         >
@@ -413,7 +464,7 @@ export default function DeliveryCalendarPage() {
 
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                         <Link
-                            href="/orders"
+                            href="/delivery/orders"
                             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
                         >
                             <FiPackage />
@@ -491,14 +542,38 @@ export default function DeliveryCalendarPage() {
                                     <label className="block text-[11px] font-black uppercase tracking-wider text-[#17181A]/60 mb-1">
                                         Horário de Saída
                                     </label>
-                                    <div className="flex items-center bg-[#F5F2EB] rounded-2xl px-3.5 py-2">
-                                        <FiClock className="text-[#6032F6] mr-2 shrink-0" />
-                                        <input
-                                            type="time"
-                                            value={startTime}
-                                            onChange={(e) => setStartTime(e.target.value)}
-                                            className="bg-transparent text-xs font-bold text-[#17181A] outline-none w-full cursor-pointer"
-                                        />
+                                    <div className="flex items-center justify-between bg-[#F5F2EB] rounded-2xl px-3 py-1.5 border border-transparent focus-within:border-[#6032F6]">
+                                        <div className="flex items-center gap-1">
+                                            <FiClock className="text-[#6032F6] mr-1 shrink-0 text-sm" />
+                                            <select
+                                                value={startTime.split(":")[0] || "09"}
+                                                onChange={(e) => {
+                                                    const m = startTime.split(":")[1] || "00";
+                                                    setStartTime(`${e.target.value}:${m}`);
+                                                }}
+                                                className="bg-transparent text-xs font-black text-[#17181A] outline-none cursor-pointer"
+                                                title="Selecione a hora de saída"
+                                            >
+                                                {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((h) => (
+                                                    <option key={h} value={h}>{h}h</option>
+                                                ))}
+                                            </select>
+                                            <span className="text-xs font-black text-[#6032F6]">:</span>
+                                            <select
+                                                value={startTime.split(":")[1] || "00"}
+                                                onChange={(e) => {
+                                                    const h = startTime.split(":")[0] || "09";
+                                                    setStartTime(`${h}:${e.target.value}`);
+                                                }}
+                                                className="bg-transparent text-xs font-black text-[#17181A] outline-none cursor-pointer"
+                                                title="Selecione o minuto de saída"
+                                            >
+                                                {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((m) => (
+                                                    <option key={m} value={m}>{m}m</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-[#17181A]/40 whitespace-nowrap hidden sm:inline">Início</span>
                                     </div>
                                 </div>
 
@@ -535,11 +610,10 @@ export default function DeliveryCalendarPage() {
                                                 key={v.id}
                                                 type="button"
                                                 onClick={() => setTransport(v.id as any)}
-                                                className={`py-1.5 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                                                    transport === v.id
+                                                className={`py-1.5 rounded-xl flex items-center justify-center transition-all cursor-pointer ${transport === v.id
                                                         ? "bg-[#17181A] text-white shadow-sm"
                                                         : "text-[#17181A]/50 hover:bg-white/60"
-                                                }`}
+                                                    }`}
                                                 title={v.title}
                                             >
                                                 <v.icon size={13} />
@@ -556,22 +630,20 @@ export default function DeliveryCalendarPage() {
                                         <button
                                             type="button"
                                             onClick={() => setAlgorithm("dijkstra")}
-                                            className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                                algorithm === "dijkstra"
+                                            className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${algorithm === "dijkstra"
                                                     ? "bg-white text-[#6032F6] shadow-sm"
                                                     : "text-[#17181A]/50 hover:bg-white/40"
-                                            }`}
+                                                }`}
                                         >
                                             Dijkstra
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setAlgorithm("bellman")}
-                                            className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                                algorithm === "bellman"
+                                            className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${algorithm === "bellman"
                                                     ? "bg-white text-[#6032F6] shadow-sm"
                                                     : "text-[#17181A]/50 hover:bg-white/40"
-                                            }`}
+                                                }`}
                                         >
                                             Bellman
                                         </button>
@@ -587,57 +659,107 @@ export default function DeliveryCalendarPage() {
                             <div>
                                 <h2 className="text-sm font-black uppercase tracking-wider text-[#17181A] flex items-center gap-2">
                                     <FiLayers className="text-[#6032F6]" />
-                                    Pedidos Disponíveis
+                                    {isFilteredBySelection ? "Pedidos Selecionados do Lote" : "Pedidos Disponíveis"}
                                 </h2>
                                 <p className="text-[11px] font-bold text-[#17181A]/40">
-                                    Selecione os pedidos para montar o lote
+                                    {isFilteredBySelection
+                                        ? `${allOrders.length} pedido(s) selecionado(s) no painel`
+                                        : "Selecione os pedidos para montar o lote"}
                                 </p>
                             </div>
-                            <button
-                                onClick={handleSelectAll}
-                                className="text-[10px] font-black uppercase tracking-wider text-[#6032F6] hover:underline cursor-pointer"
-                            >
-                                {selectedOrderIds.length === allOrders.length ? "Desmarcar Todos" : "Selecionar Todos"}
-                            </button>
+                            <div className="flex items-center gap-3">
+                                {isFilteredBySelection && fullOrdersList.length > allOrders.length && (
+                                    <button
+                                        onClick={() => {
+                                            setAllOrders(fullOrdersList);
+                                            setIsFilteredBySelection(false);
+                                            if (typeof window !== "undefined") {
+                                                sessionStorage.removeItem("stockio_selected_order_ids");
+                                                const url = new URL(window.location.href);
+                                                url.searchParams.delete("orders");
+                                                url.searchParams.delete("ids");
+                                                window.history.replaceState({}, "", url.pathname);
+                                            }
+                                        }}
+                                        className="text-[10px] font-black uppercase tracking-wider text-[#17181A]/60 hover:text-[#6032F6] cursor-pointer"
+                                    >
+                                        Ver Todos ({fullOrdersList.length})
+                                    </button>
+                                )}
+                                <button
+                                    onClick={handleSelectAll}
+                                    className="text-[10px] font-black uppercase tracking-wider text-[#6032F6] hover:underline cursor-pointer"
+                                >
+                                    {selectedOrderIds.length === allOrders.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                                </button>
+                            </div>
                         </div>
+
+                        {isFilteredBySelection && (
+                            <div className="mb-3 px-3.5 py-2 rounded-2xl bg-[#6032F6]/10 border border-[#6032F6]/20 flex items-center justify-between gap-2 text-xs">
+                                <span className="font-bold text-[#6032F6] flex items-center gap-1.5 text-[11px]">
+                                    <FiCheckCircle className="shrink-0" />
+                                    Exibindo apenas os {allOrders.length} pedidos selecionados no painel.
+                                </span>
+                                <button
+                                    onClick={() => {
+                                        setAllOrders(fullOrdersList);
+                                        setIsFilteredBySelection(false);
+                                        if (typeof window !== "undefined") {
+                                            sessionStorage.removeItem("stockio_selected_order_ids");
+                                            const url = new URL(window.location.href);
+                                            url.searchParams.delete("orders");
+                                            url.searchParams.delete("ids");
+                                            window.history.replaceState({}, "", url.pathname);
+                                        }
+                                    }}
+                                    className="text-[10px] font-black uppercase text-[#6032F6] hover:underline cursor-pointer shrink-0"
+                                >
+                                    Mostrar todos
+                                </button>
+                            </div>
+                        )}
 
                         {/* Lista de Pedidos com Checkbox e Edição de Deadline */}
                         <div className="space-y-3 overflow-y-auto max-h-[460px] pr-1">
                             {allOrders.map((order) => {
                                 const isSelected = selectedOrderIds.includes(order.id);
+                                const isEditing = editingDeadlineOrderId === order.id;
                                 const deadlineDate = new Date(order.deadline);
                                 const deadlineFormatted = isNaN(deadlineDate.getTime())
                                     ? "--:--"
                                     : deadlineDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+                                const currentH = deadlineFormatted.split(':')[0] || '00';
+                                const currentM = deadlineFormatted.split(':')[1] || '00';
+
                                 return (
                                     <div
                                         key={order.id}
                                         onClick={() => toggleOrderSelection(order.id)}
-                                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
-                                            isSelected
+                                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${isSelected
                                                 ? "bg-[#6032F6]/5 border-[#6032F6] shadow-xs"
                                                 : "bg-[#F5F2EB]/50 border-transparent hover:bg-[#F5F2EB]"
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-start gap-3">
+                                            <div className="flex items-start gap-3 flex-1 min-w-0">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
-                                                    onChange={() => {}} // tratado pelo container
-                                                    className="mt-1 w-4 h-4 rounded text-[#6032F6] cursor-pointer"
+                                                    onChange={() => { }} // tratado pelo container
+                                                    className="mt-1 w-4 h-4 rounded text-[#6032F6] cursor-pointer shrink-0"
                                                 />
-                                                <div>
+                                                <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-black text-[#17181A]">
                                                             Pedido #{order.id}
                                                         </span>
-                                                        <span className="text-[10px] font-bold text-[#17181A]/50">
+                                                        <span className="text-[10px] font-bold text-[#17181A]/50 truncate">
                                                             {order.customerName}
                                                         </span>
                                                     </div>
-                                                    <p className="text-[11px] font-medium text-[#17181A]/70 truncate max-w-[220px]">
+                                                    <p className="text-[11px] font-medium text-[#17181A]/70 truncate max-w-[200px] sm:max-w-[240px]">
                                                         {order.address || `CEP ${order.cep}`}
                                                     </p>
                                                     <p className="text-[10px] font-bold text-[#6032F6]">
@@ -646,26 +768,84 @@ export default function DeliveryCalendarPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Deadline Badge com edição */}
+                                            {/* Deadline Badge com visualização completa e clique para editar */}
                                             <div
-                                                className="text-right shrink-0"
+                                                className="flex flex-col items-end shrink-0"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/40 block mb-0.5">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/40 block mb-1">
                                                     Deadline Limite
                                                 </span>
-                                                <div className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-xl shadow-xs border border-black/5">
-                                                    <FiClock className="text-amber-600 text-xs" />
-                                                    <input
-                                                        type="time"
-                                                        value={deadlineFormatted}
-                                                        onChange={(e) => handleUpdateDeadline(order.id, e.target.value)}
-                                                        className="text-xs font-black text-[#17181A] bg-transparent outline-none cursor-pointer w-14"
-                                                        title="Clique para editar o prazo deste cliente"
-                                                    />
-                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingDeadlineOrderId(isEditing ? null : order.id)}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${isEditing
+                                                            ? "bg-[#6032F6] text-white border-[#6032F6] shadow-sm"
+                                                            : "bg-white hover:bg-violet-50/70 text-[#17181A] border-black/10 hover:border-[#6032F6] shadow-2xs"
+                                                        }`}
+                                                    title="Clique para alterar o horário limite deste pedido"
+                                                >
+                                                    <FiClock className={`text-xs shrink-0 ${isEditing ? "text-white" : "text-amber-500"}`} />
+                                                    <span className="text-xs font-black tracking-wider whitespace-nowrap min-w-[38px] text-center">
+                                                        {deadlineFormatted}
+                                                    </span>
+                                                    <FiEdit2 className={`text-[10px] shrink-0 ml-0.5 ${isEditing ? "text-white" : "text-zinc-400"}`} />
+                                                </button>
                                             </div>
                                         </div>
+
+                                        {/* Painel de Ajuste Rápido de Horário (Expandido de forma limpa) */}
+                                        {isEditing && (
+                                            <div
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="mt-3 pt-3 border-t border-black/10 bg-white/90 p-3 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-200"
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-[#17181A]/70 flex items-center gap-1.5">
+                                                        <FiClock className="text-[#6032F6]" />
+                                                        Ajustar Horário Limite
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center justify-between gap-2.5">
+                                                    {/* Dropdowns Limpos de Hora e Minuto */}
+                                                    <div className="flex items-center gap-1.5 bg-[#F5F2EB] px-3 py-1.5 rounded-xl border border-black/5">
+                                                        <span className="text-[10px] font-bold text-[#17181A]/60">Hora:</span>
+                                                        <select
+                                                            value={currentH}
+                                                            onChange={(e) => handleUpdateDeadline(order.id, `${e.target.value}:${currentM}`)}
+                                                            className="bg-transparent font-black text-xs text-[#17181A] outline-none cursor-pointer"
+                                                        >
+                                                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
+                                                                <option key={h} value={h}>{h}h</option>
+                                                            ))}
+                                                        </select>
+
+                                                        <span className="text-xs font-black text-[#6032F6] mx-0.5">:</span>
+
+                                                        <span className="text-[10px] font-bold text-[#17181A]/60">Min:</span>
+                                                        <select
+                                                            value={currentM}
+                                                            onChange={(e) => handleUpdateDeadline(order.id, `${currentH}:${e.target.value}`)}
+                                                            className="bg-transparent font-black text-xs text-[#17181A] outline-none cursor-pointer"
+                                                        >
+                                                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                                                                <option key={m} value={m}>{m}m</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingDeadlineOrderId(null)}
+                                                        className="px-3.5 py-1.5 rounded-xl bg-[#6032F6] hover:bg-[#5227DF] text-white text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                                    >
+                                                        <FiCheck size={12} />
+                                                        <span>Concluir</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -701,7 +881,7 @@ export default function DeliveryCalendarPage() {
 
                     {/* Bloco do Mapa com Rota Contínua em Cadeia */}
                     <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-black/5 flex flex-col">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div>
                                 <h2 className="text-sm font-black uppercase tracking-wider text-[#17181A] flex items-center gap-2">
                                     <FiTruck className="text-[#6032F6]" />
@@ -714,17 +894,35 @@ export default function DeliveryCalendarPage() {
                                 </p>
                             </div>
 
-                            {scheduleResult && (
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold bg-[#F5F2EB] px-3 py-1 rounded-xl">
-                                        Distância: <strong>{scheduleResult.schedule.length > 0 ? `${(scheduleResult.totalTravelMinutes * speedKmh / 60).toFixed(1)} km` : "0 km"}</strong>
-                                    </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {/* Legenda do Mapa Integrada */}
+                                <div className="flex items-center gap-2.5 bg-[#F5F2EB] px-3 py-1.5 rounded-xl text-[11px] font-bold text-[#17181A] border border-black/5 shadow-2xs">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#17181A] border border-white shrink-0"></span>
+                                        <span>Origem</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#6032F6] shrink-0"></span>
+                                        <span>No Prazo</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0"></span>
+                                        <span>Com Atraso</span>
+                                    </div>
                                 </div>
-                            )}
+
+                                {scheduleResult && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold bg-[#F5F2EB] px-3 py-1.5 rounded-xl border border-black/5">
+                                            Distância: <strong>{scheduleResult.schedule.length > 0 ? `${(scheduleResult.totalTravelMinutes * speedKmh / 60).toFixed(1)} km` : "0 km"}</strong>
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Canvas do Mapa Leaflet */}
-                        <div className="h-[380px] sm:h-[420px] rounded-2xl overflow-hidden relative">
+                        <div className="h-[380px] sm:h-[420px] rounded-2xl overflow-hidden relative isolate z-0">
                             <MultiStopDeliveryMap
                                 graph={graphData}
                                 stops={mapStops}
@@ -740,7 +938,7 @@ export default function DeliveryCalendarPage() {
                     {/* Bloco da Timeline Lateral da Agenda */}
                     {scheduleResult ? (
                         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-black/5">
-                            
+
                             {/* Resumo do Lote no Topo da Timeline */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 rounded-2xl bg-[#F5F2EB]/70 border border-black/5">
                                 <div>
@@ -756,7 +954,7 @@ export default function DeliveryCalendarPage() {
                                         ) : (
                                             <>
                                                 <FiAlertTriangle className="text-rose-600 text-base" />
-                                                <span className="text-sm font-black text-rose-600">+{scheduleResult.maxLatenessMinutes} min</span>
+                                                <span className="text-sm font-black text-rose-600">{scheduleResult.maxLatenessMinutes} min</span>
                                             </>
                                         )}
                                     </div>
@@ -857,7 +1055,7 @@ export default function DeliveryCalendarPage() {
 
                             {/* A Linha do Tempo Visual */}
                             <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#6032F6]/30">
-                                
+
                                 {/* Ponto 0: Origem */}
                                 <div className="relative flex items-start gap-4">
                                     <div className="absolute -left-[27px] top-1 w-6 h-6 rounded-full bg-[#17181A] border-2 border-white flex items-center justify-center text-white text-[10px] shadow-sm">
@@ -886,26 +1084,23 @@ export default function DeliveryCalendarPage() {
                                         <div
                                             key={item.orderId}
                                             onClick={() => setActiveStopIndex(item.stopIndex)}
-                                            className={`relative flex items-start gap-4 cursor-pointer transition-all ${
-                                                isHighlighted ? "scale-[1.01]" : ""
-                                            }`}
+                                            className={`relative flex items-start gap-4 cursor-pointer transition-all ${isHighlighted ? "scale-[1.01]" : ""
+                                                }`}
                                         >
                                             <div
-                                                className={`absolute -left-[27px] top-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center font-black text-[10px] shadow-sm ${
-                                                    item.isDelayed
+                                                className={`absolute -left-[27px] top-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center font-black text-[10px] shadow-sm ${item.isDelayed
                                                         ? "bg-rose-600 text-white"
                                                         : "bg-[#6032F6] text-white"
-                                                }`}
+                                                    }`}
                                             >
                                                 {item.stopIndex}
                                             </div>
 
                                             <div
-                                                className={`flex-1 p-4 rounded-2xl border transition-all ${
-                                                    isHighlighted
+                                                className={`flex-1 p-4 rounded-2xl border transition-all ${isHighlighted
                                                         ? "bg-[#6032F6]/10 border-[#6032F6] shadow-sm"
                                                         : "bg-white border-black/5 hover:border-[#6032F6]/40"
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
                                                     <div>
@@ -930,35 +1125,38 @@ export default function DeliveryCalendarPage() {
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase">
-                                                                <FiCheckCircle /> No Prazo ({item.slackMinutes}m de folga)
+                                                                <FiCheckCircle /> No Prazo
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
 
                                                 {/* Detalhamento dos Tempos */}
-                                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#F5F2EB] text-[11px]">
-                                                    <div>
-                                                        <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/40 block">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2.5 border-t border-[#F5F2EB] text-[11px]">
+                                                    <div className="bg-[#F5F2EB]/70 rounded-xl p-2 border border-black/5 flex flex-col justify-center">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/50 flex items-center gap-1">
+                                                            <FiTruck size={10} className="text-[#17181A]/60" />
                                                             Deslocamento
                                                         </span>
-                                                        <span className="font-bold text-[#17181A]">
-                                                            +{item.travelDurationMinutes} min
+                                                        <span className="font-black text-xs text-[#17181A] whitespace-nowrap mt-0.5">
+                                                            {item.travelDurationMinutes} min
                                                         </span>
                                                     </div>
-                                                    <div>
-                                                        <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/40 block">
+                                                    <div className="bg-[#6032F6]/5 rounded-xl p-2 border border-[#6032F6]/10 flex flex-col justify-center">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-[#6032F6] flex items-center gap-1">
+                                                            <FiCheckCircle size={10} />
                                                             Chegada Prevista
                                                         </span>
-                                                        <span className="font-black text-[#6032F6]">
+                                                        <span className="font-black text-xs text-[#6032F6] whitespace-nowrap mt-0.5">
                                                             {item.arrivalFormatted}
                                                         </span>
                                                     </div>
-                                                    <div>
-                                                        <span className="text-[9px] font-black uppercase tracking-wider text-[#17181A]/40 block">
+                                                    <div className="bg-amber-500/10 rounded-xl p-2 border border-amber-500/20 flex flex-col justify-center">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                                                            <FiClock size={10} className="text-amber-600" />
                                                             Prazo (Deadline)
                                                         </span>
-                                                        <span className="font-bold text-[#17181A]">
+                                                        <span className="font-black text-xs text-[#17181A] whitespace-nowrap mt-0.5">
                                                             {item.deadlineFormatted}
                                                         </span>
                                                     </div>

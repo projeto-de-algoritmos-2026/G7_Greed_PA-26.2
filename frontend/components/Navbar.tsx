@@ -353,11 +353,12 @@ export default function Navbar() {
                         <div className="flex space-x-6 items-center">
                             <CartDropdown />
 
-                            <Link href={`/profile/${userId}`} className={`text-2xl hover:text-black/80 dark:hover:text-[#C6E700] transition-colors ${getActiveClass('/profile')}`}>
-                                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center bg-black text-card text-sm font-bold transition-all duration-200 ${pathname.startsWith('/profile') ? 'border-white' : 'border-transparent hover:border-black/50'}`}>
-                                    {user?.fullName ? user.fullName.charAt(0).toUpperCase() : '?'}
-                                </div>
-                            </Link>
+                            <div 
+                                className="w-8 h-8 rounded-full border-2 border-white/50 flex items-center justify-center bg-black text-white text-sm font-bold select-none"
+                                title={user?.fullName || "Usuário"}
+                            >
+                                {user?.fullName ? user.fullName.charAt(0).toUpperCase() : '?'}
+                            </div>
                             <button onClick={handleLogout} className="text-white text-2xl hover:text-red-600 dark:hover:text-[#C6E700] transition-colors cursor-pointer">
                                 <FaSignOutAlt />
                             </button>

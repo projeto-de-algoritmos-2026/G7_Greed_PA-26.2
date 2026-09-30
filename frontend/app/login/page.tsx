@@ -205,7 +205,7 @@ export default function LoginPage() {
 
             <div className="mt-4 flex justify-center">
               <Link
-                href="/entregador"
+                href="/delivery/orders"
                 className="flex items-center gap-2 px-6 py-3 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-white hover:bg-zinc-800 transition-all font-semibold text-sm"
               >
                 <GiFullMotorcycleHelmet className="text-lg" />

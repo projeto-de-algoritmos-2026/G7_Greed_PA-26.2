@@ -200,8 +200,15 @@ async def list_orders():
                     else:
                         created_dt = datetime.now()
 
-                    # Atribui deadline escalonado para teste do algoritmo
-                    deadline_dt = created_dt + timedelta(minutes=30 + (idx * 20))
+                    now = datetime.now()
+                    # Atribui deadline para o dia de hoje, para simulação consistente do algoritmo
+                    if created_dt.date() < now.date():
+                        deadline_dt = datetime(now.year, now.month, now.day, created_dt.hour, created_dt.minute, 0)
+                        if deadline_dt < now:
+                            deadline_dt = now + timedelta(minutes=45 + (idx * 30))
+                    else:
+                        deadline_dt = created_dt + timedelta(minutes=45 + (idx * 30))
+
                     o_dict["deadline"] = deadline_dt.replace(microsecond=0).isoformat()
                     o_dict["customerName"] = f"Cliente #{o_dict.get('id')}"
                     result.append(o_dict)
