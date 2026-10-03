@@ -5,6 +5,7 @@ from app.algoritmos.bellman_ford import run_bellman_ford
 from app.algoritmos.dijkstra import run_dijkstra
 from app.algoritmos.minimize_lateness import run_minimize_lateness, compare_scheduling_strategies
 from app.algoritmos.chain_route import calculate_chain_route
+from app.algoritmos.selecting_breakpoints import run_selecting_breakpoints
 
 router = APIRouter(
     prefix="/api",
@@ -166,3 +167,13 @@ async def calculate_multi_stop_chain_route(payload: ChainRouteRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao traçar rota em cadeia: {str(e)}")
+
+
+# ----------------------------------------------------
+# SELEÇÃO DE PONTOS DE PARADA (BREAKPOINTS)
+# ----------------------------------------------------
+
+class SelectingBreakpointsRequest(BaseModel):
+    graph_data: Graph = Field(alias="graph")
+    path: List[int]
+    capacity_meters: float = Field(alias="capacityMeters")
