@@ -187,7 +187,10 @@ class SelectingBreakpointsResponse(BaseModel):
     capacityMeters: float
 
 
-@router.post("/routes/select-breakpoints")
+@router.post(
+    "/routes/select-breakpoints",
+    response_model=SelectingBreakpointsResponse
+)
 async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
     graph_edges = {
         node_id: [edge.model_dump() for edge in edges]
@@ -200,4 +203,4 @@ async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
         capacity_meters=payload.capacity_meters
     )
 
-    return results
+    return result
