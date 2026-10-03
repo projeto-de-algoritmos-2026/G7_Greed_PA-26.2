@@ -177,3 +177,19 @@ class SelectingBreakpointsRequest(BaseModel):
     graph_data: Graph = Field(alias="graph")
     path: List[int]
     capacity_meters: float = Field(alias="capacityMeters")
+
+
+@router.post("/routes/select-breakpoints")
+async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
+    graph_edges = {
+        node_id: [edge.model_dump() for edge in edges]
+        for node_id, edges in payload.graph_data.edges.items()
+    }
+
+    result = run_selecting_breakpoints(
+        graph_edges=graph_edges,
+        path=payload.path,
+        capacity_meters=payload.capacity_meters
+    )
+
+    return results
