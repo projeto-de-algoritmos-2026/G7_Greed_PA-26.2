@@ -178,6 +178,14 @@ class SelectingBreakpointsRequest(BaseModel):
     path: List[int]
     capacity_meters: float = Field(alias="capacityMeters")
 
+class SelectingBreakpointsResponse(BaseModel):
+    possible: bool
+    message: Optional[str] = None
+    breakpoints: List[int] = Field(default_factory=list)
+    numberOfStops: int = 0
+    totalDistanceMeters: float = 0.0
+    capacityMeters: float
+
 
 @router.post("/routes/select-breakpoints")
 async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
