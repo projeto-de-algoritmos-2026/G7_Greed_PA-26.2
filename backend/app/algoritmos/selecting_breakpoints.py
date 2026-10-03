@@ -16,13 +16,29 @@ def find_edge_distance(
 
     return None
 
+
 def run_selecting_breakpoints(
     graph_edges: Dict[int, List[dict]],
     path: List[int],
     capacity_meters: float
 ) -> dict:
-    breakpoints = []
+    if capacity_meters <= 0:
+        return {
+            "possible": False,
+            "message": "Invalid capacity",
+            "capacityMeters": capacity_meters
+        }
 
+    if len(path) <= 1:
+        return {
+            "possible": True,
+            "breakpoints": [],
+            "numberOfStops": 0,
+            "totalDistanceMeters": 0.0,
+            "capacityMeters": capacity_meters
+        }
+
+    breakpoints = []
     distance_since_last_stop = 0.0
     total_distance = 0.0
 
@@ -39,13 +55,15 @@ def run_selecting_breakpoints(
         if edge_distance is None:
             return {
                 "possible": False,
-                "message": "No solution"
+                "message": "No solution",
+                "capacityMeters": capacity_meters
             }
 
         if edge_distance > capacity_meters:
             return {
                 "possible": False,
-                "message": "No solution"
+                "message": "No solution",
+                "capacityMeters": capacity_meters
             }
 
         if distance_since_last_stop + edge_distance > capacity_meters:
@@ -59,5 +77,6 @@ def run_selecting_breakpoints(
         "possible": True,
         "breakpoints": breakpoints,
         "numberOfStops": len(breakpoints),
-        "totalDistanceMeters": total_distance
+        "totalDistanceMeters": round(total_distance, 2),
+        "capacityMeters": capacity_meters
     }
