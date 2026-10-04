@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getOrderById, calculateRouteAPI } from "../../../../api/api";
+import {
+    getOrderById,
+    calculateRouteAPI,
+    calculateBreakpointsAPI,
+    SelectingBreakpointsResult
+} from "../../../../api/api";
 import { buildRoadGraph, geocodeCEP, findNearestNode, OSMGraph, RouteResult } from "../../../../utils/osmGraph";
 import { FiArrowLeft, FiMapPin, FiClock, FiSearch, FiPackage, FiZap, FiCompass, FiRefreshCw } from "react-icons/fi";
 import { FaWalking, FaBicycle, FaMotorcycle, FaCar } from "react-icons/fa";
@@ -12,6 +17,25 @@ import { toast } from "react-toastify";
 
 // Leaflet deve ser importado via SSR falso pois usa window
 const DeliveryMap = dynamic(() => import("../../../../components/DeliveryMap"), { ssr: false });
+
+const TRANSPORT_CONFIG = {
+    walk: {
+        speedKmh: 5,
+        capacityMeters: null
+    },
+    bike: {
+        speedKmh: 15,
+        capacityMeters: 2000
+    },
+    moto: {
+        speedKmh: 40,
+        capacityMeters: 12000
+    },
+    car: {
+        speedKmh: 30,
+        capacityMeters: 20000
+    }
+};
 
 export default function DeliveryRoutePage() {
     const params = useParams();
@@ -22,6 +46,7 @@ export default function DeliveryRoutePage() {
     const [loadingMsg, setLoadingMsg] = useState<string>("Buscando pedido...");
     const [graphData, setGraphData] = useState<{ graph: OSMGraph, start: number, end: number } | null>(null);
     const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
+    const [breakpointsResult, setBreakpointsResult] = useState<SelectingBreakpointsResult | null>(null);
     const [algorithm, setAlgorithm] = useState<"bellman" | "dijkstra">("bellman");
     const [transport, setTransport] = useState<"walk" | "bike" | "moto" | "car">("bike");
 
@@ -96,13 +121,42 @@ export default function DeliveryRoutePage() {
             setGraphData({ graph, start: sNode, end: eNode });
 
             setLoadingMsg(`Calculando menor caminho com ${algorithm === "dijkstra" ? "Dijkstra" : "Bellman-Ford"}...`);
-
+//------------------------------------------------------------------------------------------------------
             const result = await calculateRouteAPI(graph, sNode, eNode, algorithm);
 
-            if (!result) toast.warning("Não foi possível traçar uma rota conexa entre os pontos.");
+            if (!result) {
+                toast.warning("Não foi possível traçar uma rota conexa entre os pontos.");
+                setBreakpointsResult(null);
+                setLoadingMsg("");
+                return;
+            }
 
             setRouteResult(result);
+
+            if (capacityMeters !== null) {
+                setLoadingMsg("Calculando pontos de recarga...");
+
+                const breakpointResult = await calculateBreakpointsAPI({
+                    graph,
+                    path: result.path,
+                    capacityMeters,
+                    transport
+                });
+
+                setBreakpointsResult(breakpointResult);
+
+                if (breakpointResult && !breakpointResult.possible) {
+                    toast.warning(
+                        "A autonomia selecionada não permite concluir esta rota."
+                    );
+                }
+            } else {
+                setBreakpointsResult(null);
+            }
+
             setLoadingMsg("");
+
+//-----------------------------------------------------------------------------------------------------
 
         } catch (err: any) {
             console.error(err);
@@ -127,10 +181,9 @@ export default function DeliveryRoutePage() {
     // }
 
     // Calcular tempo estimado baseado no transporte
-    let speedKmh = 15; // default bike
-    if (transport === 'walk') speedKmh = 5;
-    if (transport === 'moto') speedKmh = 40;
-    if (transport === 'car') speedKmh = 30;
+const transportConfig = TRANSPORT_CONFIG[transport];
+const speedKmh = transportConfig.speedKmh;
+const capacityMeters = transportConfig.capacityMeters;
 
     const distKm = routeResult ? routeResult.totalDistance / 1000 : 0;
     const timeMins = routeResult ? Math.ceil((distKm / speedKmh) * 60) : 0;
@@ -305,7 +358,17 @@ export default function DeliveryRoutePage() {
                                 </div>
                             </div>
 
+                            {breakpointsResult && (
+                            <div className="mb-6 p-4 bg-[#F5F2EB] rounded-2xl">
+                                <p className="text-xs font-black uppercase tracking-wider text-[#17181A]">
+                                    Paradas para recarga
+                                </p>
 
+                                <p className="text-sm font-bold text-[#6032F6] mt-1">
+                                    {breakpointsResult.numberOfStops}
+                                </p>
+                            </div>
+                        )}
 
                             <div className="flex gap-2 mb-6 p-1 bg-[#F5F2EB] rounded-full">
                                 <button
@@ -344,6 +407,7 @@ export default function DeliveryRoutePage() {
                                 endNode={graphData.end}
                                 path={routeResult?.path || []}
                                 visitedEdges={routeResult?.visitedEdges || []}
+                                breakpoints={breakpointsResult?.breakpoints || []}
                             />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-[#EBE7DD] absolute inset-0">

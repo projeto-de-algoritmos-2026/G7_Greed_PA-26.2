@@ -42,6 +42,38 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     }
 }
 
+function generateFallbackCoordinates(
+    cep: string,
+    baseLat: number = -15.7975,
+    baseLon: number = -47.8919
+): { lat: number; lon: number } {
+    let hash = 0;
+
+    for (const digit of cep) {
+        hash = (hash * 31 + Number(digit)) >>> 0;
+    }
+
+    const angle = (hash % 360) * Math.PI / 180;
+
+    // Distância simulada entre aproximadamente 1 km e 7 km
+    const radiusKm =
+        1 + ((Math.floor(hash / 360) % 6000) / 1000);
+
+    const latOffset =
+        (radiusKm / 111.32) * Math.cos(angle);
+
+    const kmPerLongitudeDegree =
+        111.32 * Math.cos(baseLat * Math.PI / 180);
+
+    const lonOffset =
+        (radiusKm / kmPerLongitudeDegree) * Math.sin(angle);
+
+    return {
+        lat: baseLat + latOffset,
+        lon: baseLon + lonOffset
+    };
+}
+
 // Geocodificação inteligente com fallbacks progressivos
 export async function geocodeCEP(cep: string): Promise<{ lat: number; lon: number } | null> {
     try {
@@ -110,14 +142,20 @@ export async function geocodeCEP(cep: string): Promise<{ lat: number; lon: numbe
             }
         }
 
-        console.warn("Nominatim não encontrou as coordenadas para o CEP:", cep);
-        // Fallback Brasília 
-        return { lat: -15.7975, lon: -47.8919 }; 
+        console.warn(
+            "Nominatim não encontrou as coordenadas para o CEP. Utilizando fallback simulado:",
+            cep
+        );
 
-    } catch (e) {
-        console.error("Geocoding erro/timeout:", e);
-        return { lat: -15.7975, lon: -47.8919 }; 
-    }
+        return generateFallbackCoordinates(cleanCep);
+
+        } catch (e) {
+            console.error("Geocoding erro/timeout:", e);
+
+            const cleanCep = cep.replace(/\D/g, '');
+
+            return generateFallbackCoordinates(cleanCep);
+        }
 }
 
 export async function buildRoadGraph(lat1: number, lon1: number, lat2: number, lon2: number): Promise<OSMGraph | null> {

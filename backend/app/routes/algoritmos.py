@@ -5,6 +5,7 @@ from app.algoritmos.bellman_ford import run_bellman_ford
 from app.algoritmos.dijkstra import run_dijkstra
 from app.algoritmos.minimize_lateness import run_minimize_lateness, compare_scheduling_strategies
 from app.algoritmos.chain_route import calculate_chain_route
+from app.algoritmos.selecting_breakpoints import run_selecting_breakpoints
 
 router = APIRouter(
     prefix="/api",
@@ -166,3 +167,52 @@ async def calculate_multi_stop_chain_route(payload: ChainRouteRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao traçar rota em cadeia: {str(e)}")
+
+
+# ----------------------------------------------------
+# SELEÇÃO DE PONTOS DE PARADA (BREAKPOINTS)
+# ----------------------------------------------------
+
+class SelectingBreakpointsRequest(BaseModel):
+    graph_data: Graph = Field(alias="graph")
+    path: List[int]
+    capacity_meters: float = Field(alias="capacityMeters")
+    transport: Optional[str] = None
+
+class SelectingBreakpointsResponse(BaseModel):
+    possible: bool
+    message: Optional[str] = None
+    breakpoints: List[int] = Field(default_factory=list)
+    numberOfStops: int = 0
+    totalDistanceMeters: float = 0.0
+    capacityMeters: float
+
+
+@router.post(
+    "/routes/select-breakpoints",
+    response_model=SelectingBreakpointsResponse
+)
+async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
+    graph_edges = {
+        node_id: [edge.model_dump() for edge in edges]
+        for node_id, edges in payload.graph_data.edges.items()
+    }
+
+    result = run_selecting_breakpoints(
+        graph_edges=graph_edges,
+        path=payload.path,
+        capacity_meters=payload.capacity_meters
+    )
+
+    print("\n------ SELECTING BREAKPOINTS ------")
+    print(f"Veículo selecionado: {payload.transport}")
+    print(f"Autonomia: {payload.capacity_meters / 1000:.2f} km")
+    print(
+        f"Distância da rota: "
+        f"{result.get('totalDistanceMeters', 0) / 1000:.2f} km"
+    )
+    print(f"Paradas necessárias: {result.get('numberOfStops', 0)}")
+    print(f"Breakpoints selecionados: {result.get('breakpoints', [])}")
+    print("-------------------------------------\n")
+
+    return result

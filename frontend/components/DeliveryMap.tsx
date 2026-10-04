@@ -11,9 +11,10 @@ interface DeliveryMapProps {
     endNode: number;
     path: number[];
     visitedEdges?: { u: number, v: number }[];
+    breakpoints?: number[];
 }
 
-export default function DeliveryMap({ graph, startNode, endNode, path, visitedEdges }: DeliveryMapProps) {
+export default function DeliveryMap({ graph, startNode, endNode, path, visitedEdges, breakpoints = []}: DeliveryMapProps) {
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMap = useRef<L.Map | null>(null);
     const timeouts = useRef<NodeJS.Timeout[]>([]);
@@ -65,6 +66,46 @@ export default function DeliveryMap({ graph, startNode, endNode, path, visitedEd
                 shadowSize: [41, 41]
             });
             L.marker([eNode.lat, eNode.lon], { icon: destIcon }).addTo(map).bindPopup("Destino");
+
+            // -------------------------------------------
+
+            const batteryIcon = L.divIcon({
+                className: '',
+                html: `
+                    <div style="
+                        width: 38px;
+                        height: 38px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: white;
+                        border: 3px solid #6032F6;
+                        border-radius: 50%;
+                        font-size: 21px;
+                        box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+                    ">
+                        🔋
+                    </div>
+                `,
+                iconSize: [38, 38],
+                iconAnchor: [19, 19],
+                popupAnchor: [0, -20]
+            });
+
+            breakpoints.forEach((nodeId, index) => {
+                const node = graph.nodes[nodeId];
+
+                if (!node) return;
+
+                L.marker(
+                    [node.lat, node.lon],
+                    { icon: batteryIcon }
+                )
+                    .addTo(map)
+                    .bindPopup(`Parada para recarga ${index + 1}`);
+            });
+
+            //--------------------------------------------
 
             const drawFinalPath = () => {
                 if (path && path.length > 0) {
@@ -118,7 +159,7 @@ export default function DeliveryMap({ graph, startNode, endNode, path, visitedEd
             }
         }
 
-    }, [graph, startNode, endNode, path, visitedEdges]);
+    }, [graph, startNode, endNode, path, visitedEdges, breakpoints]);
 
     return (
         <div ref={mapRef} className="w-full h-full min-h-[300px] rounded-3xl overflow-hidden shadow-inner z-0" />
