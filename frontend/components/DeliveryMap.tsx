@@ -11,9 +11,10 @@ interface DeliveryMapProps {
     endNode: number;
     path: number[];
     visitedEdges?: { u: number, v: number }[];
+    breakpoints?: number[];
 }
 
-export default function DeliveryMap({ graph, startNode, endNode, path, visitedEdges }: DeliveryMapProps) {
+export default function DeliveryMap({ graph, startNode, endNode, path, visitedEdges, breakpoints = []}: DeliveryMapProps) {
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMap = useRef<L.Map | null>(null);
     const timeouts = useRef<NodeJS.Timeout[]>([]);
@@ -118,7 +119,7 @@ export default function DeliveryMap({ graph, startNode, endNode, path, visitedEd
             }
         }
 
-    }, [graph, startNode, endNode, path, visitedEdges]);
+    }, [graph, startNode, endNode, path, visitedEdges, breakpoints]);
 
     return (
         <div ref={mapRef} className="w-full h-full min-h-[300px] rounded-3xl overflow-hidden shadow-inner z-0" />
