@@ -406,6 +406,7 @@ const capacityMeters = transportConfig.capacityMeters;
                                 endNode={graphData.end}
                                 path={routeResult?.path || []}
                                 visitedEdges={routeResult?.visitedEdges || []}
+                                breakpoints={breakpointsResult?.breakpoints || []}
                             />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-[#EBE7DD] absolute inset-0">
