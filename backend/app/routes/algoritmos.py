@@ -177,6 +177,7 @@ class SelectingBreakpointsRequest(BaseModel):
     graph_data: Graph = Field(alias="graph")
     path: List[int]
     capacity_meters: float = Field(alias="capacityMeters")
+    transport: Optional[str] = None
 
 class SelectingBreakpointsResponse(BaseModel):
     possible: bool
@@ -202,5 +203,16 @@ async def select_route_breakpoints(payload: SelectingBreakpointsRequest):
         path=payload.path,
         capacity_meters=payload.capacity_meters
     )
+
+    print("\n------ SELECTING BREAKPOINTS ------")
+    print(f"Veículo selecionado: {payload.transport}")
+    print(f"Autonomia: {payload.capacity_meters / 1000:.2f} km")
+    print(
+        f"Distância da rota: "
+        f"{result.get('totalDistanceMeters', 0) / 1000:.2f} km"
+    )
+    print(f"Paradas necessárias: {result.get('numberOfStops', 0)}")
+    print(f"Breakpoints selecionados: {result.get('breakpoints', [])}")
+    print("-------------------------------------\n")
 
     return result

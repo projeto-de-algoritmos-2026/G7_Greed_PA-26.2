@@ -214,6 +214,7 @@ export async function calculateBreakpointsAPI(payload: {
     graph: any;
     path: number[];
     capacityMeters: number;
+    transport: string;
 }): Promise<SelectingBreakpointsResult | null> {
     try {
         const res = await fetch(`${BASE_URL}/api/routes/select-breakpoints`, {

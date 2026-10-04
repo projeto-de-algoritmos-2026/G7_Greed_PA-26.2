@@ -25,7 +25,7 @@ const TRANSPORT_CONFIG = {
     },
     bike: {
         speedKmh: 15,
-        capacityMeters: 5000
+        capacityMeters: 2000
     },
     moto: {
         speedKmh: 40,
@@ -139,7 +139,8 @@ export default function DeliveryRoutePage() {
                 const breakpointResult = await calculateBreakpointsAPI({
                     graph,
                     path: result.path,
-                    capacityMeters
+                    capacityMeters,
+                    transport
                 });
 
                 setBreakpointsResult(breakpointResult);
