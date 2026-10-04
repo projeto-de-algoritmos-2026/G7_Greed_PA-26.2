@@ -121,13 +121,41 @@ export default function DeliveryRoutePage() {
             setGraphData({ graph, start: sNode, end: eNode });
 
             setLoadingMsg(`Calculando menor caminho com ${algorithm === "dijkstra" ? "Dijkstra" : "Bellman-Ford"}...`);
-
+//------------------------------------------------------------------------------------------------------
             const result = await calculateRouteAPI(graph, sNode, eNode, algorithm);
 
-            if (!result) toast.warning("Não foi possível traçar uma rota conexa entre os pontos.");
+            if (!result) {
+                toast.warning("Não foi possível traçar uma rota conexa entre os pontos.");
+                setBreakpointsResult(null);
+                setLoadingMsg("");
+                return;
+            }
 
             setRouteResult(result);
+
+            if (capacityMeters !== null) {
+                setLoadingMsg("Calculando pontos de recarga...");
+
+                const breakpointResult = await calculateBreakpointsAPI({
+                    graph,
+                    path: result.path,
+                    capacityMeters
+                });
+
+                setBreakpointsResult(breakpointResult);
+
+                if (breakpointResult && !breakpointResult.possible) {
+                    toast.warning(
+                        "A autonomia selecionada não permite concluir esta rota."
+                    );
+                }
+            } else {
+                setBreakpointsResult(null);
+            }
+
             setLoadingMsg("");
+
+//-----------------------------------------------------------------------------------------------------
 
         } catch (err: any) {
             console.error(err);
@@ -329,7 +357,17 @@ const capacityMeters = transportConfig.capacityMeters;
                                 </div>
                             </div>
 
+                            {breakpointsResult && (
+                            <div className="mb-6 p-4 bg-[#F5F2EB] rounded-2xl">
+                                <p className="text-xs font-black uppercase tracking-wider text-[#17181A]">
+                                    Paradas para recarga
+                                </p>
 
+                                <p className="text-sm font-bold text-[#6032F6] mt-1">
+                                    {breakpointsResult.numberOfStops}
+                                </p>
+                            </div>
+                        )}
 
                             <div className="flex gap-2 mb-6 p-1 bg-[#F5F2EB] rounded-full">
                                 <button
