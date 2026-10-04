@@ -201,3 +201,35 @@ export async function calculateChainRouteAPI(payload: {
     }
 }
 
+export interface SelectingBreakpointsResult {
+    possible: boolean;
+    message?: string | null;
+    breakpoints: number[];
+    numberOfStops: number;
+    totalDistanceMeters: number;
+    capacityMeters: number;
+}
+
+export async function calculateBreakpointsAPI(payload: {
+    graph: any;
+    path: number[];
+    capacityMeters: number;
+}): Promise<SelectingBreakpointsResult | null> {
+    try {
+        const res = await fetch(`${BASE_URL}/api/routes/select-breakpoints`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) return null;
+
+        return await res.json();
+    } catch (e) {
+        console.error("Erro na API de Selecting Breakpoints:", e);
+        return null;
+    }
+}
+
