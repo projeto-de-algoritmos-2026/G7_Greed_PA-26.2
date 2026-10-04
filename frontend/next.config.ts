@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/entregador/login",
+        destination: "/delivery/login",
+        permanent: true,
+      },
+      {
         source: "/entregador",
         destination: "/delivery/orders",
         permanent: true,

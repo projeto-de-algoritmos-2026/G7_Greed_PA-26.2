@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { GiFullMotorcycleHelmet } from 'react-icons/gi';
+import { FiArrowLeft } from 'react-icons/fi';
 
-export default function LoginPage() {
+export default function DeliveryLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,11 +42,12 @@ export default function LoginPage() {
         throw new Error(data.detail || data.message || 'Erro ao realizar login.');
       }
 
-      if (data.user && data.user.role !== 'cliente') {
-        throw new Error('Acesso restrito para clientes. Entregadores devem acessar a página de parceiros.');
+      // Validação de perfil: apenas entregadores ou administradores podem acessar
+      if (data.user && data.user.role === 'cliente') {
+        throw new Error('Esta conta é de cliente. O acesso a esta área é exclusivo para entregadores parceiros.');
       }
 
-      setSuccess('Login efetuado com sucesso! Redirecionando...');
+      setSuccess('Login de entregador realizado com sucesso! Redirecionando...');
 
       if (data.access_token) {
         localStorage.setItem('stockio_token', data.access_token);
@@ -53,8 +55,12 @@ export default function LoginPage() {
       if (data.user && data.user.role) {
         localStorage.setItem('stockio_role', data.user.role);
       }
+      if (data.user && data.user.fullName) {
+        localStorage.setItem('stockio_user_name', data.user.fullName);
+      }
+
       setTimeout(() => {
-        router.push('/');
+        router.push('/delivery/orders');
       }, 1000);
     } catch (err: any) {
       setError(err.message || 'Falha ao conectar com o servidor.');
@@ -65,7 +71,7 @@ export default function LoginPage() {
 
   return (
     <main className="h-screen w-screen bg-[#F5F2EB] flex flex-col justify-between relative overflow-hidden select-none">
-
+      {/* Header Mobile */}
       <header className="lg:hidden pt-6 px-8 sm:pt-7 sm:px-12 z-20 shrink-0 flex justify-center">
         <div className="inline-block transition-transform duration-300 hover:scale-[1.03] cursor-default select-none">
           <Image
@@ -80,11 +86,10 @@ export default function LoginPage() {
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row items-center lg:items-end justify-between px-6 sm:px-10 lg:px-[200px] xl:px-[240px] relative z-10 overflow-hidden">
-
+        {/* Lado Esquerdo - Branding Desktop */}
         <div className="hidden lg:flex flex-1 flex-col justify-between items-center h-full pt-6 pb-0">
-
           <div className="w-full flex justify-center pointer-events-auto -translate-x-6 lg:-translate-x-8 xl:-translate-x-10">
-            <div className="inline-block transition-transform duration-300 hover:scale-[1.03] cursor-default select-none">
+            <Link href="/" className="inline-block transition-transform duration-300 hover:scale-[1.03] cursor-pointer select-none">
               <Image
                 src="/LogoPreta.svg"
                 alt="STOCK.IO"
@@ -93,14 +98,14 @@ export default function LoginPage() {
                 priority
                 className="h-auto w-56 lg:w-[280px] xl:w-[320px] object-contain drop-shadow-xs"
               />
-            </div>
+            </Link>
           </div>
 
-          <div className="w-full flex justify-center items-end h-full max-h-[80vh] pointer-events-none">
+          <div className="w-full flex justify-center items-end h-full max-h-[80vh] pointer-events-none relative">
             <Image
-              src="/Stockles.svg"
-              alt="Stockles Mascot"
-              width={540}
+              src="/Entregador.svg"
+              alt="Entregador Parceiro"
+              width={600}
               height={780}
               priority
               className="object-contain object-bottom h-full max-h-[80vh] w-auto drop-shadow-sm select-none"
@@ -108,11 +113,20 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Lado Direito - Card de Login do Entregador */}
         <div className="w-full lg:w-[520px] shrink-0 flex justify-center lg:justify-end h-full max-h-[90vh] items-end">
-          <div className="w-full max-w-[520px] lg:w-[520px] bg-[#17181A] text-white rounded-t-[36px] sm:rounded-t-[44px] rounded-b-none px-8 sm:px-14 lg:px-16 pt-[72px] pb-8 sm:pb-10 shadow-2xl h-full flex flex-col justify-start overflow-hidden">
+          <div className="w-full max-w-[520px] lg:w-[520px] bg-[#17181A] text-white rounded-t-[36px] sm:rounded-t-[44px] rounded-b-none px-8 sm:px-14 lg:px-16 pt-[52px] pb-8 sm:pb-10 shadow-2xl h-full flex flex-col justify-start overflow-hidden">
+            
+            {/* Tag / Badge Entregador Parceiro */}
+            <div className="flex justify-center mb-4">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6032F6]/20 border border-[#6032F6]/50 text-[#855BFA] text-xs font-bold uppercase tracking-wider">
+                <GiFullMotorcycleHelmet className="text-base" />
+                Portal do Entregador
+              </span>
+            </div>
 
-            <h1 className="text-[#F6F3E4] text-2xl sm:text-[44px] font-black tracking-wide text-center uppercase leading-tight m-0 mb-[40px]">
-              BEM VINDO DE VOLTA!
+            <h1 className="text-[#F6F3E4] text-2xl sm:text-[36px] font-black tracking-wide text-center uppercase leading-tight m-0 mb-[30px]">
+              ACESSO PARCEIRO
             </h1>
 
             {error && (
@@ -127,13 +141,12 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-
               <div className="relative">
                 <input
-                  id="email"
+                  id="delivery-email"
                   name="email"
                   type="email"
-                  placeholder="Email"
+                  placeholder="Email do entregador"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -144,7 +157,7 @@ export default function LoginPage() {
 
               <div className="relative">
                 <input
-                  id="password"
+                  id="delivery-password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Senha"
@@ -188,28 +201,19 @@ export default function LoginPage() {
                     <span>ENTRANDO...</span>
                   </div>
                 ) : (
-                  'ENTRAR'
+                  'ENTRAR COMO ENTREGADOR'
                 )}
               </button>
             </form>
 
-            <div className="mt-[30px] mb-2 text-center text-sm text-zinc-300 font-medium">
-              Não possui uma conta?{' '}
+            {/* Link para voltar ao login de cliente */}
+            <div className="mt-8 flex justify-center">
               <Link
-                href="/signup"
-                className="text-[#6032F6] hover:text-[#784BF8] font-bold hover:underline transition-colors ml-1"
-              >
-                Cadastre-se
-              </Link>
-            </div>
-
-            <div className="mt-4 flex justify-center">
-              <Link
-                href="/delivery/login"
+                href="/login"
                 className="flex items-center gap-2 px-6 py-3 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-white hover:bg-zinc-800 transition-all font-semibold text-sm"
               >
-                <GiFullMotorcycleHelmet className="text-lg" />
-                Entregador parceiro?
+                <FiArrowLeft className="text-base" />
+                Sou cliente (Login principal)
               </Link>
             </div>
           </div>
@@ -218,4 +222,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

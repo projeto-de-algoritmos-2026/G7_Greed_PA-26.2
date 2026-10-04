@@ -81,14 +81,15 @@ class AuthService:
         Autentica o usuário verificando o hash da senha no banco de dados via Prisma.
         """
         if not cls._is_configured() or not db.is_connected():
+            is_delivery = "entregador" in str(payload.email).lower()
             return AuthResponse(
                 success=True,
                 message="[Modo Demonstração] Login efetuado com sucesso!",
                 user=UserData(
                     id="mock-user-id",
                     email=str(payload.email),
-                    fullName="Usuário Demonstração",
-                    role="cliente"
+                    fullName="Entregador Demonstração" if is_delivery else "Usuário Demonstração",
+                    role="entregador" if is_delivery else "cliente"
                 ),
                 access_token="mock-token-xyz"
             )
